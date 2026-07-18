@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FitManager Pro - アルティメット完全版</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #4CAF50;
+            --bg-color: #f4f7f6;
+            --text-color: #333;
+            --card-bg: #fff;
+            --accent-color: #ff9800;
+            --danger-color: #f44336;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: var(--bg-color); color: var(--text-color); line-height: 1.5; overflow-x: hidden; }
+        
+        .container { padding: clamp(10px, 3vw, 20px); max-width: 900px; margin: 0 auto; }
+        .card { background-color: var(--card-bg); border-radius: 8px; padding: clamp(15px, 4vw, 25px); margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .card h3 { margin-bottom: 15px; font-size: clamp(1.1rem, 4vw, 1.3rem); border-left: 4px solid var(--primary-color); padding-left: 10px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: clamp(0.8rem, 2.5vw, 0.9rem); }
+        
+        input[type="text"], input[type="password"], input[type="number"], input[type="date"], select, textarea { 
+            width: 100%; max-width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 6px; 
+            font-size: 1rem; box-sizing: border-box; background-color: #fafafa; min-height: 44px; -webkit-appearance: none; appearance: none;
+        }
+        
+        button.btn-primary { background-color: var(--primary-color); color: white; padding: 12px 20px; border: none; border-radius: 6px; cursor: pointer; width: 100%; font-size: clamp(0.95rem, 3vw, 1.1rem); font-weight: bold; margin-top: 10px; transition: background 0.2s; }
+        button.btn-primary:hover { background-color: #45a049; }
+
+        /* ヘッダー・タブ・認証 */
+        #authContainer { max-width: 450px; margin: clamp(20px, 8vw, 50px) auto; }
+        .auth-tabs { display: flex; margin-bottom: 20px; border-bottom: 2px solid #ddd; }
+        .auth-tabs button { flex: 1; padding: 10px; background: none; border: none; font-size: 1rem; cursor: pointer; color: #666; font-weight: bold; }
+        .auth-tabs button.active { border-bottom: 3px solid var(--primary-color); color: var(--primary-color); }
+        #appContainer { display: none; }
+        header { background-color: var(--primary-color); color: white; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; }
+        .header-title { font-size: 1.2rem; font-weight: bold; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 10px; }
+        .logout-btn { background-color: rgba(255,255,255,0.2); color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 0.85rem; cursor: pointer; flex-shrink: 0; }
+        .nav-tabs { display: flex; flex-wrap: wrap; background-color: #333; }
+        .nav-tabs button { flex: 1 1 auto; background-color: inherit; color: white; border: none; padding: 12px 6px; font-size: 0.85rem; min-width: 80px; cursor: pointer; }
+        .nav-tabs button.active { background-color: var(--primary-color); }
+        .tab-content { display: none; animation: fadeEffect 0.3s; }
+        @keyframes fadeEffect { from {opacity: 0;} to {opacity: 1;} }
+
+        /* ==================== リアル人体図 ＆ 部位選択 UI ==================== */
+        .muscle-map-container { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .human-figure { width: 340px; height: 480px; background-color: #fff; border: 1px solid #e0e0e0; border-radius: 12px; box-shadow: inset 0 2px 5px rgba(0,0,0,0.02); overflow: visible; }
+        .muscle-part { cursor: pointer; transition: all 0.2s ease-in-out; opacity: 0.9; stroke-linejoin: round; }
+        .muscle-part:hover { opacity: 1; filter: brightness(1.1); stroke: #222 !important; stroke-width: 2px !important; }
+        .active-hl { fill: #e91e63 !important; opacity: 1; stroke: #880e4f !important; stroke-width: 2.5px !important; filter: drop-shadow(0 0 4px rgba(233,30,99,0.5)); z-index: 10; }
+        
+        .label-text { font-size: 11px; fill: #444; font-weight: bold; pointer-events: none; }
+        .label-line { stroke: #666; stroke-width: 1px; pointer-events: none; }
+        .title-text { font-size: 16px; font-weight: bold; fill: #222; }
+
+        .muscle-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; margin-bottom: 20px; }
+        .muscle-btn { background-color: #fff; border: 2px solid #ddd; border-radius: 8px; padding: 12px 4px; text-align: center; font-weight: bold; font-size: 0.85rem; color: #555; cursor: pointer; transition: all 0.2s; }
+        .muscle-btn.selected { border-color: var(--primary-color); background-color: #e8f5e9; color: var(--primary-color); box-shadow: 0 2px 4px rgba(76, 175, 80, 0.2); }
+
+        /* ==================== リアルSVGアニメーション設定 ==================== */
+        .anim-box { width: 140px; height: 140px; background: linear-gradient(135deg, #f5f7fa, #cfd8dc); border: 1px solid #c3cbd6; border-radius: 12px; display: flex; justify-content: center; align-items: center; flex-shrink: 0; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); }
+        .svg-figure { width: 100%; height: 100%; }
+        
+        @keyframes hl-pulse { 0%, 100% { stroke: #d32f2f; fill: #ef5350; } 50% { stroke: #ff8a80; fill: #ffcdd2; } }
+        .active-muscle { animation: hl-pulse 1.2s ease-in-out infinite !important; }
+
+        .pu-body { animation: pu-body 2.5s infinite cubic-bezier(0.4, 0, 0.2, 1); }
+        .pu-arm-u { animation: pu-arm-u 2.5s infinite cubic-bezier(0.4, 0, 0.2, 1); }
+        .pu-arm-l { animation: pu-arm-l 2.5s infinite cubic-bezier(0.4, 0, 0.2, 1); }
+        @keyframes pu-body { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(14deg); } }
+        @keyframes pu-arm-u { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-55deg); } }
+        @keyframes pu-arm-l { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(85deg); } }
+
+        .sq-calf { animation: sq-calf 2.5s infinite cubic-bezier(0.4, 0, 0.2, 1); }
+        .sq-thigh { animation: sq-thigh 2.5s infinite cubic-bezier(0.4, 0, 0.2, 1); }
+        .sq-torso { animation: sq-torso 2.5s infinite cubic-bezier(0.4, 0, 0.2, 1); }
+        .sq-arm { animation: sq-arm 2.5s infinite cubic-bezier(0.4, 0, 0.2, 1); }
+        @keyframes sq-calf { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-20deg); } }
+        @keyframes sq-thigh { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(80deg); } }
+        @keyframes sq-torso { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-45deg); } }
+        @keyframes sq-arm { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-70deg); } }
+
+        .cr-torso { animation: cr-torso 2.2s infinite cubic-bezier(0.4, 0, 0.2, 1); }
+        @keyframes cr-torso { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(35deg); } }
+
+        .be-legs { animation: be-legs 2.2s infinite cubic-bezier(0.4, 0, 0.2, 1); }
+        .be-torso { animation: be-torso 2.2s infinite cubic-bezier(0.4, 0, 0.2, 1); }
+        @keyframes be-legs { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(15deg); } }
+        @keyframes be-torso { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-25deg); } }
+
+        .cl-forearm { animation: cl-forearm 2.5s infinite cubic-bezier(0.4, 0, 0.2, 1); }
+        @keyframes cl-forearm { 0%, 100% { transform: rotate(10deg); } 50% { transform: rotate(-90deg); } }
+
+        .pk-body { animation: pk-body 2.5s infinite cubic-bezier(0.4, 0, 0.2, 1); }
+        .pk-torso { animation: pk-torso 2.5s infinite cubic-bezier(0.4, 0, 0.2, 1); }
+        .pk-arm-u { animation: pk-arm-u 2.5s infinite cubic-bezier(0.4, 0, 0.2, 1); }
+        .pk-arm-l { animation: pk-arm-l 2.5s infinite cubic-bezier(0.4, 0, 0.2, 1); }
+        @keyframes pk-body { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(10deg); } }
+        @keyframes pk-torso { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-5deg); } }
+        @keyframes pk-arm-u { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-35deg); } }
+        @keyframes pk-arm-l { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(50deg); } }
+
+        .cf-lift { animation: cf-lift 2.5s infinite cubic-bezier(0.4, 0, 0.2, 1); }
+        @keyframes cf-lift { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(16deg); } }
+
+        /* ==================== リスト・UI汎用部品 ==================== */
+        .routine-item { display: flex; align-items: stretch; background: #fff; border: 1px solid #eee; border-radius: 8px; padding: 15px; margin-bottom: 12px; gap: 15px; flex-wrap: wrap; }
+        .routine-info { flex: 1; min-width: 200px; display: flex; flex-direction: column; justify-content: center; }
+        .routine-info h4 { font-size: 1.1rem; margin-bottom: 5px; color: #222; }
+        .target-badges { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+        .badge { background-color: #ffebee; color: #c62828; font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 12px; border: 1px solid #ef9a9a; }
+        .equipment-note { background-color: #f1f8e9; border-left: 3px solid #8bc34a; padding: 6px 10px; font-size: 0.8rem; color: #33691e; margin-bottom: 10px; border-radius: 0 4px 4px 0; }
+        .routine-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: auto; }
+        .routine-controls input { width: 55px; min-height: 36px; padding: 5px; text-align: center; font-size: 1rem; }
+        .routine-controls button { width: auto !important; margin-top: 0 !important; padding: 8px 16px !important; font-size: 0.9rem !important; }
+        
+        .my-menu-list { list-style: none; padding: 0; }
+        .my-menu-item { background: #e3f2fd; border-left: 4px solid #2196f3; padding: 12px; margin-bottom: 10px; border-radius: 0 4px 4px 0; display: flex; justify-content: space-between; align-items: center; }
+        .btn-delete { background: none; border: none; color: var(--danger-color); font-weight: bold; font-size: 1.4rem; cursor: pointer; padding: 0 10px; }
+
+        .switch-container { display: flex; background-color: #eee; border-radius: 6px; padding: 3px; margin-bottom: 15px; flex-wrap: wrap; }
+        .switch-btn { flex: 1 1 auto; padding: 10px; border: none; background: none; cursor: pointer; font-weight: bold; font-size: 0.85rem; color: #666; text-align: center; }
+        .switch-btn.active { background-color: white; color: var(--text-color); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .auto-panel { background-color: #f0fdf4; border: 1px dashed var(--primary-color); padding: 15px; border-radius: 6px; margin-bottom: 15px; text-align: center; }
+        .auto-status { font-weight: bold; color: var(--primary-color); margin-bottom: 10px; font-size: 1.1rem; }
+        .trouble-box { display: none; background-color: #fff5f5; border: 1px solid #feb2b2; border-radius: 6px; padding: 15px; margin-top: 15px; text-align: left; font-size: 0.85rem; color: #c53030; }
+        
+        .timer-modes { display: flex; gap: 10px; margin-bottom: 15px; }
+        .timer-mode-btn { flex: 1; padding: 10px; border: 1px solid #ccc; background-color: white; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.95rem; }
+        .timer-mode-btn.active { background-color: var(--primary-color); color: white; border-color: var(--primary-color); }
+        .timer-display { font-family: 'Courier New', Courier, monospace; font-size: 3rem; text-align: center; background-color: #222; color: #0f0; padding: 15px 10px; border-radius: 8px; margin: 15px 0; letter-spacing: 2px; }
+        .timer-controls { display: flex; gap: 10px; }
+        .timer-controls button { flex: 1; padding: 15px 10px; font-size: 1.1rem; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+
+        .advice-box, .recipe-box, .ai-coach-box { background-color: #e8f5e9; border-left: 5px solid var(--primary-color); padding: 15px; margin-top: 15px; font-size: 0.95rem; }
+        .recipe-box { background-color: #fff3e0; border-left-color: var(--accent-color); }
+        .ai-coach-box { background-color: #e3f2fd; border-left-color: #2196f3; }
+        
+        .webcam-container { width: 100%; max-width: 400px; margin: 15px auto; border-radius: 8px; overflow: hidden; background-color: #222; display: none; }
+        #webcamPreview { width: 100%; height: auto; display: block; transform: scaleX(-1); }
+        #mealPhotoPreview { width: 100%; max-width: 300px; height: auto; display: none; border-radius: 8px; margin: 15px auto; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .chart-container { position: relative; height: 250px; width: 100%; }
+
+        #pdfReportContainer { position: fixed; top: 300vh; left: 0; width: 800px; background-color: white; z-index: -2000; pointer-events: none; opacity: 0; }
+        #pdfReportTemplate { font-family: Arial, sans-serif; color: #333; padding: 40px; background: white; }
+        
+        .bmi-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: center; margin-bottom: 15px; }
+        .bmi-table th { background-color: #f5f5f5; border: 1px solid #ccc; padding: 8px; }
+        .bmi-table td { border: 1px solid #ccc; padding: 8px; }
+    </style>
+</head>
+<body>
+
+<!-- アカウントログイン画面 -->
+<div id="authContainer" class="card">
+    <h2 style="text-align: center; margin-bottom: 20px; color: var(--primary-color);">FitManager</h2>
+    <div class="auth-tabs">
+        <button id="tab-login" class="active" onclick="switchAuthTab('login')">ログイン</button>
+        <button id="tab-register" onclick="switchAuthTab('register')">新規登録</button>
+        <button id="tab-reset" onclick="switchAuthTab('reset')">再設定</button>
+    </div>
+    <div id="form-login" class="auth-form">
+        <div class="form-group"><label>ユーザー名</label><input type="text" id="loginUsername"></div>
+        <div class="form-group"><label>パスワード</label><input type="password" id="loginPassword"></div>
+        <button class="btn-primary" onclick="handleLogin()">ログイン</button>
+    </div>
+    <div id="form-register" class="auth-form" style="display: none;">
+        <div class="form-group"><label>希望ユーザー名</label><input type="text" id="regUsername"></div>
+        <div class="form-group"><label>パスワード</label><input type="password" id="regPassword"></div>
+        <div class="form-group"><label>秘密の質問</label><select id="regQuestion"><option value="pet">最初に飼ったペットの名前は？</option></select></div>
+        <div class="form-group"><label>質問の答え</label><input type="text" id="regAnswer"></div>
+        <button class="btn-primary" onclick="handleRegister()">登録する</button>
+    </div>
+    <div id="form-reset" class="auth-form" style="display: none;">
+        <div class="form-group"><label>対象のユーザー名</label><input type="text" id="resetUsername"></div>
+        <div class="form-group"><label>秘密の質問の答え</label><input type="text" id="resetAnswer"></div>
+        <div class="form-group"><label>新しいパスワード</label><input type="password" id="resetNewPassword"></div>
+        <button class="btn-primary" onclick="handleResetPassword()">更新</button>
+    </div>
+</div>
+
+<!-- メインアプリケーション -->
+<div id="appContainer">
+    <header>
+        <div class="header-title">My Fitness App (<span id="displayUserName">User</span>)</div>
+        <button class="logout-btn" onclick="handleLogout()">ログアウト</button>
+    </header>
+
+    <div class="nav-tabs">
+        <button class="tab-link active" onclick="openTab(event, 'CustomWorkout')">カスタム家トレ</button>
+        <button class="tab-link" onclick="openTab(event, 'Dashboard')">記録・データ</button>
+        <button class="tab-link" onclick="openTab(event, 'AICoachTab')">AIコーチ</button>
+        <button class="tab-link" onclick="openTab(event, 'TimerTab')">タイマー</button>
+        <button class="tab-link" onclick="openTab(event, 'DietTab')">食事・カロリー</button>
+        <button class="tab-link" onclick="openTab(event, 'Profile')">プロフィール</button>
+    </div>
+
+    <div class="container">
+        <!-- タブ1: 部位別カスタム家トレ -->
+        <div id="CustomWorkout" class="tab-content" style="display: block;">
+            <div class="card">
+                <h3>リアル人体トレーニング部位マップ</h3>
+                <p style="font-size:0.85rem; color:#666; margin-bottom:15px;">イラストまたは下のボタンから、鍛えたい部位を選択してください（複数選択可）。</p>
+                
+                <!-- リアル筋肉マップ描画エリア -->
+                <div class="muscle-map-container">
+                    <!-- 前面 (Front) -->
+                    <svg class="human-figure" viewBox="-150 -20 350 480">
+                        <text x="-140" y="0" class="title-text">前面</text>
+                        <!-- ベーススキン -->
+                        <g fill="#ffe0b2" stroke="#d7ccc8" stroke-width="1.5">
+                            <path d="M 0,60 L 12,65 L 20,80 L 45,90 L 45,150 L 25,210 L 0,225 Z" />
+                            <path d="M 0,60 L -12,65 L -20,80 L -45,90 L -45,150 L -25,210 L 0,225 Z" />
+                            <path d="M 40,90 C 65,90 80,120 70,150 L 85,210 L 75,250 L 60,240 L 55,200 L 30,140 Z" />
+                            <path d="M -40,90 C -65,90 -80,120 -70,150 L -85,210 L -75,250 L -60,240 L -55,200 L -30,140 Z" />
+                            <path d="M 0,225 L 32,220 Q 45,260 40,330 Q 50,370 45,410 L 20,410 Q 15,370 23,330 Q 15,270 0,240 Z" />
+                            <path d="M 0,225 L -32,220 Q -45,260 -40,330 Q -50,370 -45,410 L -20,410 Q -15,370 -23,330 Q -15,270 0,240 Z" />
+                            <path d="M 70,245 L 80,260 L 75,265 L 65,250 M 65,250 L 70,270 L 65,275 L 60,255 M 60,255 L 60,275 L 55,275 L 55,255 M 55,255 L 50,270 L 45,270 L 50,250 M 50,250 L 40,260 L 35,255 L 50,240" fill="#ffe0b2"/>
+                            <path d="M -70,245 L -80,260 L -75,265 L -65,250 M -65,250 L -70,270 L -65,275 L -60,255 M -60,255 L -60,275 L -55,275 L -55,255 M -55,255 L -50,270 L -45,270 L -50,250 M -50,250 L -40,260 L -35,255 L -50,240" fill="#ffe0b2"/>
+                            <path d="M 18,405 L 47,405 L 52,435 L 20,440 Z" />
+                            <path d="M -18,405 L -47,405 L -52,435 L -20,440 Z" />
+                        </g>
+
+                        <!-- 胸鎖乳突筋 -->
+                        <path class="muscle-part group-首" d="M 12,62 L 2,85 L 8,85 L 16,62 Z" fill="#80deea" stroke="#0097a7" onclick="toggleMuscle('首')"/>
+                        <path class="muscle-part group-首" d="M -12,62 L -2,85 L -8,85 L -16,62 Z" fill="#80deea" stroke="#0097a7" onclick="toggleMuscle('首')"/>
+                        <text x="-140" y="55" class="label-text">胸鎖乳突筋</text><line x1="-80" y1="52" x2="-10" y2="70" class="label-line"/>
+
+                        <!-- 僧帽筋 (正面) -->
+                        <path class="muscle-part group-上背部" d="M 12,65 L 20,80 L 35,86 C 25,75 18,65 12,65 Z" fill="#e1bee7" stroke="#6a1b9a" onclick="toggleMuscle('上背部')"/>
+                        <path class="muscle-part group-上背部" d="M -12,65 L -20,80 L -35,86 C -25,75 -18,65 -12,65 Z" fill="#e1bee7" stroke="#6a1b9a" onclick="toggleMuscle('上背部')"/>
+                        <text x="80" y="55" class="label-text">僧帽筋</text><line x1="20" y1="75" x2="75" y2="52" class="label-line"/>
+
+                        <!-- 頭部 -->
+                        <g fill="#ffe0b2" stroke="#d7ccc8" stroke-width="1.5">
+                            <path d="M 0,-5 C 25,-5 35,15 35,40 C 35,55 20,70 0,75 Z" />
+                            <path d="M 0,-5 C -25,-5 -35,15 -35,40 C -35,55 -20,70 0,75 Z" />
+                        </g>
+
+                        <!-- 顔 -->
+                        <path d="M 5,27 L 15,20 M -5,27 L -15,20" stroke="#333" stroke-width="2" fill="none" stroke-linecap="round"/>
+                        <path d="M 0,30 L 0,45 L -3,48" stroke="#333" stroke-width="1.5" fill="none" stroke-linejoin="round"/>
+                        <path d="M -6,57 L 6,57" stroke="#333" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+
+                        <!-- 大胸筋 -->
+                        <path class="muscle-part group-胸" d="M 0,80 C 25,80 40,90 35,115 C 30,130 15,135 0,130 Z" fill="#ff8a80" stroke="#c62828" onclick="toggleMuscle('胸')"/>
+                        <path class="muscle-part group-胸" d="M 0,80 C -25,80 -40,90 -35,115 C -30,130 -15,135 0,130 Z" fill="#ff8a80" stroke="#c62828" onclick="toggleMuscle('胸')"/>
+                        <text x="-140" y="105" class="label-text">大胸筋</text><line x1="-105" y1="102" x2="-20" y2="102" class="label-line"/>
+
+                        <!-- 腹直筋 -->
+                        <path class="muscle-part group-腹筋" d="M 0,135 L 15,138 L 13,155 L 0,155 Z" fill="#ce93d8" stroke="#6a1b9a" onclick="toggleMuscle('腹筋')"/>
+                        <path class="muscle-part group-腹筋" d="M 0,160 L 12,160 L 10,180 L 0,180 Z" fill="#ce93d8" stroke="#6a1b9a" onclick="toggleMuscle('腹筋')"/>
+                        <path class="muscle-part group-腹筋" d="M 0,185 L 8,185 L 5,205 L 0,205 Z" fill="#ce93d8" stroke="#6a1b9a" onclick="toggleMuscle('腹筋')"/>
+                        <path class="muscle-part group-腹筋" d="M 0,135 L -15,138 L -13,155 L 0,155 Z" fill="#ce93d8" stroke="#6a1b9a" onclick="toggleMuscle('腹筋')"/>
+                        <path class="muscle-part group-腹筋" d="M 0,160 L -12,160 L -10,180 L 0,180 Z" fill="#ce93d8" stroke="#6a1b9a" onclick="toggleMuscle('腹筋')"/>
+                        <path class="muscle-part group-腹筋" d="M 0,185 L -8,185 L -5,205 L 0,205 Z" fill="#ce93d8" stroke="#6a1b9a" onclick="toggleMuscle('腹筋')"/>
+                        <text x="-140" y="165" class="label-text">腹直筋</text><line x1="-105" y1="162" x2="-10" y2="162" class="label-line"/>
+
+                        <!-- 外腹斜筋 -->
+                        <path class="muscle-part group-腹筋" d="M 18,138 C 25,160 25,180 10,205 L 8,185 L 15,138 Z" fill="#90caf9" stroke="#1565c0" onclick="toggleMuscle('腹筋')"/>
+                        <path class="muscle-part group-腹筋" d="M -18,138 C -25,160 -25,180 -10,205 L -8,185 L -15,138 Z" fill="#90caf9" stroke="#1565c0" onclick="toggleMuscle('腹筋')"/>
+                        <text x="-140" y="195" class="label-text">外腹斜筋</text><line x1="-95" y1="192" x2="-20" y2="192" class="label-line"/>
+
+                        <!-- 前鋸筋 -->
+                        <path class="muscle-part group-腹筋" d="M 33,120 L 40,125 L 35,135 L 43,140 Z" fill="#a5d6a7" stroke="#2e7d32" onclick="toggleMuscle('腹筋')"/>
+                        <path class="muscle-part group-腹筋" d="M -33,120 L -40,125 L -35,135 L -43,140 Z" fill="#a5d6a7" stroke="#2e7d32" onclick="toggleMuscle('腹筋')"/>
+                        <text x="-140" y="135" class="label-text">前鋸筋</text><line x1="-105" y1="132" x2="-35" y2="132" class="label-line"/>
+
+                        <!-- 三角筋 -->
+                        <path class="muscle-part group-肩" d="M 25,80 C 45,80 55,100 45,125 C 35,115 30,100 25,80 Z" fill="#fff59d" stroke="#f57f17" onclick="toggleMuscle('肩')"/>
+                        <path class="muscle-part group-肩" d="M -25,80 C -45,80 -55,100 -45,125 C -35,115 -30,100 -25,80 Z" fill="#fff59d" stroke="#f57f17" onclick="toggleMuscle('肩')"/>
+                        <text x="80" y="105" class="label-text">三角筋</text><line x1="40" y1="102" x2="75" y2="102" class="label-line"/>
+
+                        <!-- 上腕二頭筋 -->
+                        <path class="muscle-part group-腕" d="M 30,125 C 45,125 50,150 40,170 L 25,160 C 20,140 25,130 30,125 Z" fill="#a5d6a7" stroke="#2e7d32" onclick="toggleMuscle('腕')"/>
+                        <path class="muscle-part group-腕" d="M -30,125 C -45,125 -50,150 -40,170 L -25,160 C -20,140 -25,130 -30,125 Z" fill="#a5d6a7" stroke="#2e7d32" onclick="toggleMuscle('腕')"/>
+                        <text x="80" y="145" class="label-text">上腕二頭筋</text><line x1="45" y1="142" x2="75" y2="142" class="label-line"/>
+
+                        <!-- 前腕伸筋群 -->
+                        <path class="muscle-part group-腕" d="M 40,170 C 60,185 60,220 45,235 L 30,220 C 35,200 30,180 25,160 Z" fill="#f48fb1" stroke="#ad1457" onclick="toggleMuscle('腕')"/>
+                        <path class="muscle-part group-腕" d="M -40,170 C -60,185 -60,220 -45,235 L -30,220 C -35,200 -30,180 -25,160 Z" fill="#f48fb1" stroke="#ad1457" onclick="toggleMuscle('腕')"/>
+                        <text x="80" y="200" class="label-text">前腕伸筋群</text><line x1="50" y1="197" x2="75" y2="197" class="label-line"/>
+
+                        <!-- 内転筋群 -->
+                        <path class="muscle-part group-内転筋" d="M 0,245 L 8,245 Q 18,280 15,320 L 0,290 Z" fill="#fff59d" stroke="#fbc02d" onclick="toggleMuscle('内転筋')"/>
+                        <path class="muscle-part group-内転筋" d="M 0,245 L -8,245 Q -18,280 -15,320 L 0,290 Z" fill="#fff59d" stroke="#fbc02d" onclick="toggleMuscle('内転筋')"/>
+                        <text x="-140" y="235" class="label-text">内転筋群</text><line x1="-95" y1="232" x2="-10" y2="245" class="label-line"/>
+
+                        <!-- 大腿四頭筋 -->
+                        <path class="muscle-part group-大腿四頭筋" d="M 8,245 L 28,235 Q 38,270 30,320 L 15,320 Q 20,280 8,245 Z" fill="#90caf9" stroke="#1565c0" onclick="toggleMuscle('大腿四頭筋')"/>
+                        <path class="muscle-part group-大腿四頭筋" d="M -8,245 L -28,235 Q -38,270 -30,320 L -15,320 Q -20,280 -8,245 Z" fill="#90caf9" stroke="#1565c0" onclick="toggleMuscle('大腿四頭筋')"/>
+                        <text x="-140" y="270" class="label-text">大腿四頭筋</text><line x1="-80" y1="267" x2="-20" y2="267" class="label-line"/>
+
+                        <!-- 前脛骨筋 -->
+                        <path class="muscle-part group-ふくらはぎ" d="M 23,340 L 35,345 Q 40,375 35,405 L 25,405 Q 20,375 23,340 Z" fill="#a5d6a7" stroke="#2e7d32" onclick="toggleMuscle('ふくらはぎ')"/>
+                        <path class="muscle-part group-ふくらはぎ" d="M -23,340 L -35,345 Q -40,375 -35,405 L -25,405 Q -20,375 -23,340 Z" fill="#a5d6a7" stroke="#2e7d32" onclick="toggleMuscle('ふくらはぎ')"/>
+                        <text x="-140" y="370" class="label-text">前脛骨筋</text><line x1="-95" y1="367" x2="-30" y2="367" class="label-line"/>
+                        
+                        <line x1="0" y1="80" x2="0" y2="415" stroke="#e0e0e0" stroke-width="0.5"/>
+                    </svg>
+
+                    <!-- 背面 (Back) -->
+                    <svg class="human-figure" viewBox="-150 -20 350 480">
+                        <text x="-140" y="0" class="title-text">背面</text>
+                        <g fill="#ffe0b2" stroke="#d7ccc8" stroke-width="1.5">
+                            <path d="M 0,60 L 12,65 L 20,80 L 45,90 L 45,150 L 25,210 L 0,225 Z" />
+                            <path d="M 0,60 L -12,65 L -20,80 L -45,90 L -45,150 L -25,210 L 0,225 Z" />
+                            <path d="M 40,90 C 65,90 80,120 70,150 L 85,210 L 75,250 L 60,240 L 55,200 L 30,140 Z" />
+                            <path d="M -40,90 C -65,90 -80,120 -70,150 L -85,210 L -75,250 L -60,240 L -55,200 L -30,140 Z" />
+                            <path d="M 0,225 L 32,220 Q 45,260 40,330 Q 50,370 45,410 L 20,410 Q 15,370 23,330 Q 15,270 0,240 Z" />
+                            <path d="M 0,225 L -32,220 Q -45,260 -40,330 Q -50,370 -45,410 L -20,410 Q -15,370 -23,330 Q -15,270 0,240 Z" />
+                            <path d="M 70,245 L 80,260 L 75,265 L 65,250 M 65,250 L 70,270 L 65,275 L 60,255 M 60,255 L 60,275 L 55,275 L 55,255 M 55,255 L 50,270 L 45,270 L 50,250 M 50,250 L 40,260 L 35,255 L 50,240" fill="#ffe0b2"/>
+                            <path d="M -70,245 L -80,260 L -75,265 L -65,250 M -65,250 L -70,270 L -65,275 L -60,255 M -60,255 L -60,275 L -55,275 L -55,255 M -55,255 L -50,270 L -45,270 L -50,250 M -50,250 L -40,260 L -35,255 L -50,240" fill="#ffe0b2"/>
+                            <path d="M 18,405 L 47,405 L 52,435 L 20,440 Z" />
+                            <path d="M -18,405 L -47,405 L -52,435 L -20,440 Z" />
+                        </g>
+
+                        <!-- 僧帽筋 -->
+                        <path class="muscle-part group-上背部" d="M 0,50 L 25,85 L 10,105 L 0,140 Z" fill="#e1bee7" stroke="#6a1b9a" onclick="toggleMuscle('上背部')"/>
+                        <path class="muscle-part group-上背部" d="M 0,50 L -25,85 L -10,105 L 0,140 Z" fill="#e1bee7" stroke="#6a1b9a" onclick="toggleMuscle('上背部')"/>
+                        <text x="-140" y="80" class="label-text">僧帽筋</text><line x1="-105" y1="77" x2="-20" y2="77" class="label-line"/>
+
+                        <!-- 頭部 -->
+                        <g fill="#ffe0b2" stroke="#d7ccc8" stroke-width="1.5">
+                            <path d="M 0,-5 C 25,-5 35,15 35,40 C 35,55 20,70 0,75 Z" />
+                            <path d="M 0,-5 C -25,-5 -35,15 -35,40 C -35,55 -20,70 0,75 Z" />
+                        </g>
+
+                        <!-- 広背筋 -->
+                        <path class="muscle-part group-上背部" d="M 0,140 L 10,105 L 30,110 C 40,130 35,170 20,200 L 0,200 Z" fill="#90caf9" stroke="#1565c0" onclick="toggleMuscle('上背部')"/>
+                        <path class="muscle-part group-上背部" d="M 0,140 L -10,105 L -30,110 C -40,130 -35,170 -20,200 L 0,200 Z" fill="#90caf9" stroke="#1565c0" onclick="toggleMuscle('上背部')"/>
+                        <text x="-140" y="150" class="label-text">広背筋</text><line x1="-105" y1="147" x2="-25" y2="147" class="label-line"/>
+
+                        <!-- 脊柱起立筋 -->
+                        <path class="muscle-part group-下背部" d="M 0,200 L 15,200 L 10,230 L 0,230 Z" fill="#ce93d8" stroke="#6a1b9a" onclick="toggleMuscle('下背部')"/>
+                        <path class="muscle-part group-下背部" d="M 0,200 L -15,200 L -10,230 L 0,230 Z" fill="#ce93d8" stroke="#6a1b9a" onclick="toggleMuscle('下背部')"/>
+                        <text x="80" y="215" class="label-text">脊柱起立筋</text><line x1="15" y1="212" x2="75" y2="212" class="label-line"/>
+
+                        <!-- 棘下筋 -->
+                        <path class="muscle-part group-肩" d="M 25,85 C 45,85 55,105 45,130 L 30,110 Z" fill="#fff59d" stroke="#f57f17" onclick="toggleMuscle('肩')"/>
+                        <path class="muscle-part group-肩" d="M -25,85 C -45,85 -55,105 -45,130 L -30,110 Z" fill="#fff59d" stroke="#f57f17" onclick="toggleMuscle('肩')"/>
+                        <text x="80" y="105" class="label-text">棘下筋</text><line x1="35" y1="102" x2="75" y2="102" class="label-line"/>
+
+                        <!-- 上腕三頭筋 -->
+                        <path class="muscle-part group-腕" d="M 30,110 C 50,120 55,150 40,170 L 25,160 Z" fill="#ef9a9a" stroke="#c62828" onclick="toggleMuscle('腕')"/>
+                        <path class="muscle-part group-腕" d="M -30,110 C -50,120 -55,150 -40,170 L -25,160 Z" fill="#ef9a9a" stroke="#c62828" onclick="toggleMuscle('腕')"/>
+                        <text x="80" y="150" class="label-text">上腕三頭筋</text><line x1="45" y1="147" x2="75" y2="147" class="label-line"/>
+
+                        <!-- 前腕屈筋群 -->
+                        <path class="muscle-part group-腕" d="M 40,170 C 60,185 60,220 45,235 L 30,220 C 35,200 30,180 25,160 Z" fill="#f48fb1" stroke="#ad1457" onclick="toggleMuscle('腕')"/>
+                        <path class="muscle-part group-腕" d="M -40,170 C -60,185 -60,220 -45,235 L -30,220 C -35,200 -30,180 -25,160 Z" fill="#f48fb1" stroke="#ad1457" onclick="toggleMuscle('腕')"/>
+                        <text x="80" y="240" class="label-text">前腕屈筋群</text><line x1="50" y1="237" x2="75" y2="237" class="label-line"/>
+
+                        <!-- 大臀筋 -->
+                        <path class="muscle-part group-臀部" d="M 0,230 L 32,220 Q 40,250 25,280 L 0,280 Z" fill="#ffcc80" stroke="#ef6c00" onclick="toggleMuscle('臀部')"/>
+                        <path class="muscle-part group-臀部" d="M 0,230 L -32,220 Q -40,250 -25,280 L 0,280 Z" fill="#ffcc80" stroke="#ef6c00" onclick="toggleMuscle('臀部')"/>
+                        <text x="80" y="260" class="label-text">大臀筋</text><line x1="30" y1="257" x2="75" y2="257" class="label-line"/>
+
+                        <!-- ハムストリング -->
+                        <path class="muscle-part group-ハムストリング" d="M 0,280 L 25,280 Q 35,305 25,330 L 5,330 Z" fill="#a5d6a7" stroke="#2e7d32" onclick="toggleMuscle('ハムストリング')"/>
+                        <path class="muscle-part group-ハムストリング" d="M 0,280 L -25,280 Q -35,305 -25,330 L -5,330 Z" fill="#a5d6a7" stroke="#2e7d32" onclick="toggleMuscle('ハムストリング')"/>
+                        <text x="80" y="310" class="label-text">ハムストリング</text><line x1="25" y1="307" x2="75" y2="307" class="label-line"/>
+
+                        <!-- 下腿三頭筋 -->
+                        <path class="muscle-part group-ふくらはぎ" d="M 8,340 L 35,340 Q 45,375 35,405 L 20,405 Q 15,375 8,340 Z" fill="#f48fb1" stroke="#ad1457" onclick="toggleMuscle('ふくらはぎ')"/>
+                        <path class="muscle-part group-ふくらはぎ" d="M -8,340 L -35,340 Q -45,375 -35,405 L -20,405 Q -15,375 -8,340 Z" fill="#f48fb1" stroke="#ad1457" onclick="toggleMuscle('ふくらはぎ')"/>
+                        <text x="80" y="380" class="label-text">下腿三頭筋</text><line x1="35" y1="377" x2="75" y2="377" class="label-line"/>
+                        
+                        <line x1="0" y1="80" x2="0" y2="415" stroke="#e0e0e0" stroke-width="0.5"/>
+                    </svg>
+                </div>
+                
+                <div class="muscle-grid" id="muscleGrid"></div>
+                <button class="btn-primary" onclick="generateWorkoutMenu()">選択した部位でメニューを生成</button>
+            </div>
+            
+            <div class="card" id="generatedMenuCard" style="display: none;">
+                <h3>🤖 考案されたトレーニング (お手本)</h3>
+                <div id="generatedWorkoutList"></div>
+            </div>
+            
+            <div class="card">
+                <h3 style="color:#2196f3;">📝 今日のセットメニュー (マイルーティン)</h3>
+                <ul class="my-menu-list" id="myMenuList">
+                    <li style="color:#999; font-size:0.9rem;">まだメニューが組まれていません。上の考案リストから「追加」してください。</li>
+                </ul>
+                <button class="btn-primary" style="background-color: #9c27b0; margin-top: 15px;" onclick="generateFitnessPDF()">本日のメニューと記録をPDF出力</button>
+            </div>
+        </div>
+
+        <!-- タブ2: 記録・データ -->
+        <div id="Dashboard" class="tab-content">
+            <div class="card">
+                <h3>本日の運動記録</h3>
+                <div class="switch-container">
+                    <button class="switch-btn active" id="btnManual" onclick="setTrackingMode('manual')">手動入力</button>
+                    <button class="switch-btn" id="btnAuto" onclick="setTrackingMode('auto')">自動計測（スマホ）</button>
+                </div>
+                <div id="autoTrackSection" class="auto-panel" style="display: none;">
+                    <div class="auto-status" id="trackingStatus">計測待機中</div>
+                    <div style="display: flex; gap: 10px; max-width: 300px; margin: 0 auto;">
+                        <button class="btn-start" style="flex:1; padding:10px; color:white; background-color:var(--primary-color); border:none; border-radius:4px;" id="btnStartAuto" onclick="startAutoTracking()">開始</button>
+                        <button class="btn-stop" style="flex:1; padding:10px; color:white; background-color:var(--danger-color); border:none; border-radius:4px;" id="btnStopAuto" onclick="stopAutoTracking()" disabled>停止</button>
+                    </div>
+                    <div id="troubleGuide" class="trouble-box"><h4>⚠️ エラー</h4><div id="troubleText"></div></div>
+                </div>
+                <div class="form-group"><label>日付</label><input type="date" id="recordDate"></div>
+                <div class="form-group"><label>歩数 (歩)</label><input type="number" id="steps" placeholder="例: 8000"></div>
+                <div class="form-group"><label>走行距離 (km)</label><input type="number" step="0.01" id="distance" placeholder="例: 3.5"></div>
+                <div class="form-group"><label>運動時間 (分)</label><input type="number" id="duration" placeholder="例: 45"></div>
+                <button class="btn-primary" onclick="calculateScore()">記録してスコアを計算</button>
+            </div>
+            <div class="card">
+                <h3 style="text-align: center;">今日のトレーニングスコア</h3>
+                <div style="font-size: 3.5rem; color: var(--primary-color); text-align: center; font-weight: bold;" id="trainingScore">0</div>
+            </div>
+            <div class="card">
+                <h3>体重推移チャート</h3>
+                <div class="switch-container">
+                    <button class="switch-btn active" id="btn-chart-all" onclick="changeChartPeriod('all')">全期間</button>
+                    <button class="switch-btn" id="btn-chart-1m" onclick="changeChartPeriod('1m')">1ヶ月</button>
+                    <button class="switch-btn" id="btn-chart-3m" onclick="changeChartPeriod('3m')">3ヶ月</button>
+                </div>
+                <div class="chart-container"><canvas id="weightChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- タブ3: AIコーチ -->
+        <div id="AICoachTab" class="tab-content">
+            <div class="card">
+                <h3>AIコンディショニング・メニュー調整</h3>
+                <div class="form-group"><label>今日の疲労度（1: すっきり 〜 5: 強い疲労）</label><input type="range" id="coachFatigue" min="1" max="5" value="3" style="width:100%;"></div>
+                <div class="form-group">
+                    <label>体調・関節の状態</label>
+                    <select id="coachCondition"><option value="good">絶好調</option><option value="normal">普通</option><option value="bad">違和感あり</option></select>
+                </div>
+                <div style="border:1px solid #ddd; padding:15px; background:#fafafa; border-radius:6px; margin-bottom:15px;">
+                    <div class="form-group"><label>実施予定の種目</label>
+                        <select id="coachExercise" onchange="updateCoachInputFields()">
+                            <optgroup label="家トレ（自重・小物）">
+                                <option value="pushup">プッシュアップ</option>
+                                <option value="squat_body">自重スクワット</option>
+                                <option value="crunch">クランチ</option>
+                            </optgroup>
+                            <optgroup label="ジムトレ（マシン・ウェイト）">
+                                <option value="benchpress">ベンチプレス</option>
+                                <option value="squat">バーベルスクワット</option>
+                                <option value="deadlift">デッドリフト</option>
+                                <option value="latpulldown">ラットプルダウン</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <div class="form-group" style="flex:1;"><label id="coachWeightLabel">前回重量 (kg)</label><input type="number" id="coachPrevWeight" disabled placeholder="自重不要"></div>
+                        <div class="form-group" style="flex:1;"><label id="coachRepsLabel">前回レップ (回)</label><input type="number" id="coachPrevReps" placeholder="10"></div>
+                    </div>
+                </div>
+                <button class="btn-primary" onclick="runAICoachDiagnosis()">診断を依頼</button>
+            </div>
+            <div class="card" id="coachResultCard" style="display:none;"><h3>診断結果</h3><div id="coachResultBox" class="ai-coach-box"></div></div>
+            
+            <div class="card">
+                <h3>フォーム自己改善ミラー</h3>
+                <button class="btn-primary" id="btnCameraToggle" onclick="toggleFormCamera()" style="background-color:#2196f3;">カメラを起動してフォーム確認</button>
+                <div id="cameraStatus" style="color:var(--danger-color); margin-top:10px; font-size:0.85rem; font-weight:bold;"></div>
+                <div class="webcam-container" id="webcamContainer"><video id="webcamPreview" autoplay playsinline muted></video></div>
+            </div>
+        </div>
+
+        <!-- タブ4: タイマー -->
+        <div id="TimerTab" class="tab-content">
+            <div class="card">
+                <h3>高機能タイマー</h3>
+                <div class="timer-modes">
+                    <button class="timer-mode-btn active" id="btnModeStopwatch" onclick="switchTimerMode('stopwatch')">ストップウォッチ</button>
+                    <button class="timer-mode-btn" id="btnModeCountdown" onclick="switchTimerMode('countdown')">カウントダウン</button>
+                </div>
+                <div id="countdownSettings" style="display:none; margin-bottom:15px; padding:15px; background:#f9f9f9; border-radius:6px;">
+                    <input type="number" id="cdMinutes" value="3" style="width:60px;"> 分
+                    <input type="number" id="cdSeconds" value="0" style="width:60px;"> 秒
+                </div>
+                <div class="timer-display" id="timerDisplay">00:00:00</div>
+                <div class="timer-controls">
+                    <button class="btn-start" onclick="startTimer()" style="background-color:var(--primary-color); color:white;">Start</button>
+                    <button class="btn-stop" onclick="stopTimer()" style="background-color:var(--danger-color); color:white;">Stop</button>
+                    <button class="btn-reset" onclick="resetTimer()" style="background-color:#9e9e9e; color:white;">Reset</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- タブ5: 食事・カロリー -->
+        <div id="DietTab" class="tab-content">
+            <div class="card">
+                <h3>🍽️ 食事解析 ＆ カロリー推定</h3>
+                <div class="form-group"><label>料理写真</label><input type="file" id="mealImageInput" accept="image/*" onchange="previewMealPhoto(event)"></div>
+                <button class="btn-primary" id="btnAnalyzeMeal" onclick="analyzeMealCalories()" style="background-color:var(--accent-color); display:none;">AIで推定する</button>
+                <div id="mealLoading" style="display:none; text-align:center; margin:20px 0;"><span style="font-weight:bold; color:var(--accent-color);">🔍 画像をAI解析中...</span></div>
+            </div>
+            <div class="card" id="mealResultCard" style="display:none;">
+                <h3>推定結果（微調整可能）</h3>
+                <div class="form-group"><label>メニュー名</label><input type="text" id="resultMealName"></div>
+                <div class="form-group"><label>エネルギー (kcal)</label><input type="number" id="resultCalories"></div>
+                <div style="display:flex; gap:10px;">
+                    <div class="form-group" style="flex:1;"><label>P (g)</label><input type="number" id="resultProtein"></div>
+                    <div class="form-group" style="flex:1;"><label>F (g)</label><input type="number" id="resultFat"></div>
+                    <div class="form-group" style="flex:1;"><label>C (g)</label><input type="number" id="resultCarbs"></div>
+                </div>
+                <button class="btn-primary" onclick="saveEstimatedMeal()">記録に保存</button>
+            </div>
+            <div class="card">
+                <h3>おすすめ献立・レシピ（日替わり提案）</h3>
+                <div id="recipeContent" class="recipe-box">プロフィールを保存すると、目標に合わせたレシピが生成されます。</div>
+            </div>
+        </div>
+
+        <!-- タブ6: プロフィール -->
+        <div id="Profile" class="tab-content">
+            <div class="card">
+                <h3>基本情報設定</h3>
+                <div class="form-group"><label>性別</label><select id="gender"><option value="male">男性</option><option value="female">女性</option></select></div>
+                <div class="form-group"><label>年齢</label><input type="number" id="age" placeholder="30"></div>
+                <div class="form-group"><label>身長 (cm)</label><input type="number" id="height" placeholder="170"></div>
+                <div class="form-group"><label>現在の体重 (kg)</label><input type="number" id="weight" step="0.1" placeholder="65.0"></div>
+                <button class="btn-primary" onclick="saveProfileAndGenerateAdvice()">保存してAI分析を開始</button>
+            </div>
+            
+            <div class="card">
+                <h3>BMI（体格指数）早見表と計算式</h3>
+                <p style="font-size: 0.9rem; color: #555; margin-bottom: 10px;">
+                    <strong>計算式：</strong>体重(kg) ÷ {身長(m) × 身長(m)}<br>
+                    BMIは、身長と体重から肥満度を示す国際的な体格指数です。日本では22が標準体重（最も病気になりにくい状態）とされています。
+                </p>
+                <table class="bmi-table">
+                    <tr><th>BMI値</th><th>判定基準（日本肥満学会）</th></tr>
+                    <tr><td style="color: #2196f3;">18.5未満</td><td style="color: #2196f3;">低体重（痩せ型）</td></tr>
+                    <tr style="background-color: #e8f5e9;"><td style="font-weight: bold; color: #4caf50;">18.5 〜 24.9</td><td style="font-weight: bold; color: #4caf50;">普通体重（標準）</td></tr>
+                    <tr><td style="color: #ff9800;">25.0 〜 29.9</td><td style="color: #ff9800;">肥満（1度）</td></tr>
+                    <tr><td style="color: #ff5722;">30.0 〜 34.9</td><td style="color: #ff5722;">肥満（2度）</td></tr>
+                    <tr><td style="color: #e91e63;">35.0 〜 39.9</td><td style="color: #e91e63;">肥満（3度）</td></tr>
+                    <tr><td style="color: #f44336;">40.0以上</td><td style="color: #f44336;">肥満（4度）</td></tr>
+                </table>
+                <div style="background:#e3f2fd; border-left:4px solid #2196f3; padding:10px; font-size:0.9rem;">
+                    <strong>あなたの現在のBMI:</strong> <span id="currentBmiDisplay" style="font-size:1.2rem; font-weight:bold; color:#2196f3;">--</span>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>AIパーソナルアドバイス</h3>
+                <div id="adviceContent" class="advice-box">未設定（プロフィールを保存してください）</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- PDF用領域 -->
+<div id="pdfReportContainer">
+    <div id="pdfReportTemplate">
+        <h1 style="color:#4CAF50; text-align:center; border-bottom:2px solid #4CAF50; padding-bottom:10px; margin-bottom:20px;">FITNESS ACTIVITY REPORT</h1>
+        <p style="text-align:right;" id="pdfReportDate">作成日: ----/--/--</p>
+        <p>ユーザー名: <strong id="pdfUser">---</strong></p>
+        <h2 style="font-size:1.2rem; background:#eaeaea; padding:8px; margin-top:20px;">今日のセットメニュー</h2>
+        <ul id="pdfMenuList" style="padding-left:20px; line-height:1.8;"></ul>
+        <h2 style="font-size:1.2rem; background:#eaeaea; padding:8px; margin-top:20px;">活動結果</h2>
+        <p>獲得スコア: <strong id="pdfScore">0</strong> Point</p>
+    </div>
+</div>
+
+<script>
+    // ==================== 1. アカウント＆セッション ====================
+    let currentUser = null;
+    function getDB() { return JSON.parse(localStorage.getItem('fit_app_users')) || {}; }
+    function saveDB(db) { localStorage.setItem('fit_app_users', JSON.stringify(db)); }
+    function switchAuthTab(mode) {
+        document.querySelectorAll('.auth-tabs button').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.auth-form').forEach(f => f.style.display = 'none');
+        document.getElementById(`tab-${mode}`).classList.add('active');
+        document.getElementById(`form-${mode}`).style.display = 'block';
+    }
+    function handleRegister() {
+        const u = document.getElementById('regUsername').value.trim(), p = document.getElementById('regPassword').value.trim(), a = document.getElementById('regAnswer').value.trim();
+        if(!u || !p || !a) return alert('全項目を入力してください。');
+        const db = getDB(); if(db[u]) return alert('使用済みの名前です。');
+        db[u] = { password: p, answer: a.toLowerCase(), data: { gender: 'male', age: '', height: '', weight: '', advice: '', recipe: '', score: 0, weight_history: [], routine: [] } };
+        saveDB(db); alert('登録完了。ログインしてください。'); switchAuthTab('login');
+    }
+    function handleLogin() {
+        const u = document.getElementById('loginUsername').value.trim(), p = document.getElementById('loginPassword').value.trim();
+        const db = getDB();
+        if(db[u] && db[u].password === p) { currentUser = u; sessionStorage.setItem('fit_active_user', u); launchApp(); } 
+        else alert('ユーザー名またはパスワードが正しくありません。');
+    }
+    function handleResetPassword() {
+        const u = document.getElementById('resetUsername').value.trim(), a = document.getElementById('resetAnswer').value.trim().toLowerCase(), newP = document.getElementById('resetNewPassword').value.trim();
+        const db = getDB();
+        if(db[u] && db[u].answer === a) { db[u].password = newP; saveDB(db); alert('変更完了。'); switchAuthTab('login'); }
+        else alert('回答が不一致です。');
+    }
+    function handleLogout() {
+        currentUser = null; sessionStorage.removeItem('fit_active_user');
+        document.getElementById('appContainer').style.display = 'none'; document.getElementById('authContainer').style.display = 'block';
+    }
+    function launchApp() {
+        document.getElementById('authContainer').style.display = 'none'; document.getElementById('appContainer').style.display = 'block';
+        document.getElementById('displayUserName').innerText = currentUser; loadUserData(); initMuscleGrid(); renderMyMenu();
+    }
+    function openTab(evt, tabName) {
+        document.querySelectorAll(".tab-content").forEach(c => c.style.display = "none");
+        document.querySelectorAll(".tab-link").forEach(l => l.classList.remove("active"));
+        document.getElementById(tabName).style.display = "block"; evt.currentTarget.classList.add("active");
+    }
+
+    // ==================== 2. 部位選択 ＆ 筋肉ハイライトマップ ====================
+    const muscleNames = ["首", "胸", "上背部", "下背部", "肩", "腕", "腹筋", "臀部", "大腿四頭筋", "ハムストリング", "内転筋", "ふくらはぎ"];
+    let selectedMuscles = new Set();
+    
+    function initMuscleGrid() {
+        const grid = document.getElementById('muscleGrid'); grid.innerHTML = "";
+        muscleNames.forEach(m => {
+            const btn = document.createElement('button'); btn.className = 'muscle-btn'; btn.innerText = m;
+            btn.dataset.name = m;
+            btn.onclick = () => toggleMuscle(m);
+            grid.appendChild(btn);
+        });
+    }
+
+    function toggleMuscle(muscleName) {
+        if(selectedMuscles.has(muscleName)){ selectedMuscles.delete(muscleName); }
+        else { selectedMuscles.add(muscleName); }
+        updateMapAndButtons();
+    }
+
+    function updateMapAndButtons() {
+        document.querySelectorAll('.muscle-btn').forEach(btn => {
+            if(selectedMuscles.has(btn.dataset.name)) btn.classList.add('selected');
+            else btn.classList.remove('selected');
+        });
+        
+        document.querySelectorAll('.muscle-part').forEach(p => p.classList.remove('active-hl'));
+        selectedMuscles.forEach(m => {
+            const parts = document.querySelectorAll(`.group-${m}`);
+            parts.forEach(p => p.classList.add('active-hl'));
+        });
+    }
+
+    const getSVGAnim = (type, hKey) => {
+        const checkHighlight = (parts) => parts.includes(hKey) ? "active-muscle" : "";
+        if(type === 'pushup') {
+            return `<svg class="svg-figure" viewBox="0 0 200 200">
+                <line x1="10" y1="160" x2="190" y2="160" stroke="#cfd8dc" stroke-width="4" stroke-linecap="round"/>
+                <g class="pu-body" style="transform-origin: 30px 150px;">
+                    <circle cx="30" cy="150" r="6" fill="#333"/>
+                    <line x1="30" y1="150" x2="130" y2="90" stroke="#b0bec5" stroke-width="18" stroke-linecap="round" stroke="#333" stroke-width="1.5" class="${checkHighlight(['ふくらはぎ','大腿四頭筋','ハムストリング','臀部','腹筋','下背部'])}"/>
+                    <path d="M100,105 L130,90 L135,115 Z" fill="#b0bec5" stroke="#333" stroke-width="1.5" class="${checkHighlight(['胸','肩'])}"/>
+                    <circle cx="150" cy="75" r="14" fill="#cfd8dc" stroke="#455a64" stroke-width="2"/>
+                    <g class="pu-arm-u" style="transform-origin: 130px 90px;">
+                        <line x1="130" y1="90" x2="140" y2="125" stroke="#eceff1" stroke-width="12" stroke-linecap="round" stroke="#333" stroke-width="1.5" class="${checkHighlight(['腕'])}"/>
+                        <circle cx="130" cy="90" r="5" fill="#333"/>
+                        <g class="pu-arm-l" style="transform-origin: 140px 125px;">
+                            <line x1="140" y1="125" x2="145" y2="155" stroke="#eceff1" stroke-width="10" stroke-linecap="round" stroke="#333" stroke-width="1.5"/>
+                            <circle cx="140" cy="125" r="4" fill="#333"/>
+                            <circle cx="145" cy="155" r="5" fill="#333"/>
+                        </g>
+                    </g>
+                </g>
+            </svg>`;
+        }
+        if(type === 'squat') {
+            return `<svg class="svg-figure" viewBox="0 0 200 200">
+                <line x1="20" y1="180" x2="180" y2="180" stroke="#cfd8dc" stroke-width="4" stroke-linecap="round"/>
+                <circle cx="100" cy="175" r="6" fill="#333"/>
+                <g class="sq-calf" style="transform-origin: 100px 175px;">
+                    <line x1="100" y1="175" x2="100" y2="125" stroke="#b0bec5" stroke-width="16" stroke-linecap="round" stroke="#333" stroke-width="1.5"/>
+                    <circle cx="100" cy="125" r="5" fill="#333"/>
+                    <g class="sq-thigh" style="transform-origin: 100px 125px;">
+                        <line x1="100" y1="125" x2="100" y2="75" stroke="#b0bec5" stroke-width="18" stroke-linecap="round" stroke="#333" stroke-width="1.5" class="${checkHighlight(['大腿四頭筋','ハムストリング','臀部', '内転筋'])}"/>
+                        <circle cx="100" cy="75" r="6" fill="#333"/>
+                        <g class="sq-torso" style="transform-origin: 100px 75px;">
+                            <line x1="100" y1="75" x2="100" y2="25" stroke="#b0bec5" stroke-width="22" stroke-linecap="round" stroke="#333" stroke-width="1.5" class="${checkHighlight(['腹筋','下背部','上背部','胸'])}"/>
+                            <circle cx="100" cy="10" r="14" fill="#cfd8dc" stroke="#455a64" stroke-width="2"/>
+                            <g class="sq-arm" style="transform-origin: 100px 30px;">
+                                <line x1="100" y1="30" x2="100" y2="60" stroke="#eceff1" stroke-width="10" stroke-linecap="round" stroke="#333" stroke-width="1.5"/>
+                                <circle cx="100" cy="30" r="4" fill="#333"/>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+            </svg>`;
+        }
+        if(type === 'crunch') {
+            return `<svg class="svg-figure" viewBox="0 0 200 200">
+                <line x1="10" y1="160" x2="190" y2="160" stroke="#cfd8dc" stroke-width="4" stroke-linecap="round"/>
+                <circle cx="160" cy="160" r="6" fill="#333"/>
+                <line x1="160" y1="160" x2="130" y2="110" stroke="#b0bec5" stroke-width="14" stroke-linecap="round" stroke="#333" stroke-width="1.5"/>
+                <circle cx="130" cy="110" r="5" fill="#333"/>
+                <line x1="130" y1="110" x2="90" y2="150" stroke="#b0bec5" stroke-width="18" stroke-linecap="round" stroke="#333" stroke-width="1.5"/>
+                <circle cx="90" cy="150" r="6" fill="#333"/>
+                <g class="cr-torso" style="transform-origin: 90px 150px;">
+                    <line x1="90" y1="150" x2="30" y2="150" stroke="#b0bec5" stroke-width="20" stroke-linecap="round" stroke="#333" stroke-width="1.5" class="${checkHighlight(['腹筋','胸'])}"/>
+                    <circle cx="15" cy="140" r="14" fill="#cfd8dc" stroke="#455a64" stroke-width="2"/>
+                    <line x1="30" y1="150" x2="15" y2="120" stroke="#eceff1" stroke-width="10" stroke-linecap="round" stroke="#333" stroke-width="1.5"/>
+                    <circle cx="30" cy="150" r="4" fill="#333"/>
+                </g>
+            </svg>`;
+        }
+        if(type === 'back') {
+            return `<svg class="svg-figure" viewBox="0 0 200 200">
+                <line x1="10" y1="160" x2="190" y2="160" stroke="#cfd8dc" stroke-width="4" stroke-linecap="round"/>
+                <g class="be-legs" style="transform-origin: 100px 155px;">
+                    <line x1="100" y1="155" x2="30" y2="155" stroke="#b0bec5" stroke-width="16" stroke-linecap="round" stroke="#333" stroke-width="1.5" class="${checkHighlight(['ハムストリング','臀部'])}"/>
+                    <circle cx="30" cy="155" r="5" fill="#333"/>
+                </g>
+                <circle cx="100" cy="155" r="6" fill="#333"/>
+                <g class="be-torso" style="transform-origin: 100px 155px;">
+                    <line x1="100" y1="155" x2="160" y2="155" stroke="#b0bec5" stroke-width="20" stroke-linecap="round" stroke="#333" stroke-width="1.5" class="${checkHighlight(['上背部','下背部','肩','首'])}"/>
+                    <circle cx="175" cy="145" r="14" fill="#cfd8dc" stroke="#455a64" stroke-width="2"/>
+                    <line x1="160" y1="155" x2="185" y2="125" stroke="#eceff1" stroke-width="10" stroke-linecap="round" stroke="#333" stroke-width="1.5"/>
+                    <circle cx="160" cy="155" r="4" fill="#333"/>
+                </g>
+            </svg>`;
+        }
+        if(type === 'curl') {
+            return `<svg class="svg-figure" viewBox="0 0 200 200">
+                <line x1="40" y1="180" x2="160" y2="180" stroke="#cfd8dc" stroke-width="4" stroke-linecap="round"/>
+                <circle cx="100" cy="180" r="6" fill="#333"/> 
+                <line x1="100" y1="180" x2="100" y2="110" stroke="#b0bec5" stroke-width="18" stroke-linecap="round" stroke="#333" stroke-width="1.5"/>
+                <circle cx="100" cy="110" r="6" fill="#333"/>
+                <line x1="100" y1="110" x2="100" y2="50" stroke="#b0bec5" stroke-width="22" stroke-linecap="round" stroke="#333" stroke-width="1.5"/>
+                <circle cx="100" cy="30" r="14" fill="#cfd8dc" stroke="#455a64" stroke-width="2"/>
+                <g style="transform-origin: 100px 50px;">
+                    <line x1="100" y1="50" x2="100" y2="100" stroke="#eceff1" stroke-width="12" stroke-linecap="round" stroke="#333" stroke-width="1.5" class="${checkHighlight(['腕'])}"/>
+                    <circle cx="100" cy="50" r="5" fill="#333"/>
+                    <circle cx="100" cy="100" r="5" fill="#333"/>
+                    <g class="cl-forearm" style="transform-origin: 100px 100px;">
+                        <line x1="100" y1="100" x2="135" y2="100" stroke="#eceff1" stroke-width="10" stroke-linecap="round" stroke="#333" stroke-width="1.5"/>
+                        <circle cx="135" cy="100" r="5" fill="#333"/>
+                        <line x1="135" y1="100" x2="100" y2="180" stroke="#8d6e63" stroke-width="6" stroke-linecap="round" stroke-dasharray="4" opacity="0.8"/>
+                    </g>
+                </g>
+            </svg>`;
+        }
+        if(type === 'pike') {
+            return `<svg class="svg-figure" viewBox="0 0 200 200">
+                <line x1="10" y1="160" x2="190" y2="160" stroke="#cfd8dc" stroke-width="4" stroke-linecap="round"/>
+                <g class="pk-body" style="transform-origin: 40px 150px;">
+                    <circle cx="40" cy="150" r="6" fill="#333"/>
+                    <line x1="40" y1="150" x2="100" y2="70" stroke="#b0bec5" stroke-width="16" stroke-linecap="round" stroke="#333" stroke-width="1.5" class="${checkHighlight(['ハムストリング','臀部','ふくらはぎ'])}"/>
+                    <circle cx="100" cy="70" r="6" fill="#333"/>
+                    <g class="pk-torso" style="transform-origin: 100px 70px;">
+                        <line x1="100" y1="70" x2="140" y2="120" stroke="#b0bec5" stroke-width="22" stroke-linecap="round" stroke="#333" stroke-width="1.5" class="${checkHighlight(['胸','肩'])}"/>
+                        <circle cx="155" cy="135" r="14" fill="#cfd8dc" stroke="#455a64" stroke-width="2"/>
+                        <g class="pk-arm-u" style="transform-origin: 140px 120px;">
+                            <line x1="140" y1="120" x2="150" y2="140" stroke="#eceff1" stroke-width="12" stroke-linecap="round" stroke="#333" stroke-width="1.5"/>
+                            <circle cx="140" cy="120" r="5" fill="#333"/>
+                            <g class="pk-arm-l" style="transform-origin: 150px 140px;">
+                                <line x1="150" y1="140" x2="140" y2="160" stroke="#eceff1" stroke-width="10" stroke-linecap="round" stroke="#333" stroke-width="1.5"/>
+                                <circle cx="150" cy="140" r="4" fill="#333"/>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+            </svg>`;
+        }
+        if(type === 'calf') {
+            return `<svg class="svg-figure" viewBox="0 0 200 200">
+                <line x1="20" y1="180" x2="180" y2="180" stroke="#cfd8dc" stroke-width="4" stroke-linecap="round"/>
+                <line x1="150" y1="40" x2="150" y2="180" stroke="#eceff1" stroke-width="8" stroke-linecap="round"/>
+                <g class="cf-body" style="transform-origin: 110px 180px;">
+                    <line x1="100" y1="180" x2="115" y2="180" stroke="#333" stroke-width="6" stroke-linecap="round"/>
+                    <g class="cf-lift" style="transform-origin: 110px 180px;">
+                        <circle cx="100" cy="175" r="5" fill="#333"/>
+                        <line x1="100" y1="175" x2="90" y2="120" stroke="#b0bec5" stroke-width="16" stroke-linecap="round" stroke="#333" stroke-width="1.5" class="${checkHighlight(['ふくらはぎ'])}"/>
+                        <circle cx="90" cy="120" r="5" fill="#333"/>
+                        <line x1="90" y1="120" x2="95" y2="65" stroke="#b0bec5" stroke-width="18" stroke-linecap="round" stroke="#333" stroke-width="1.5"/>
+                        <circle cx="95" cy="65" r="6" fill="#333"/>
+                        <line x1="95" y1="65" x2="110" y2="15" stroke="#b0bec5" stroke-width="22" stroke-linecap="round" stroke="#333" stroke-width="1.5"/>
+                        <circle cx="115" cy="-5" r="14" fill="#cfd8dc" stroke="#455a64" stroke-width="2"/>
+                        <line x1="110" y1="15" x2="145" y2="50" stroke="#eceff1" stroke-width="10" stroke-linecap="round" stroke="#333" stroke-width="1.5"/>
+                    </g>
+                </g>
+            </svg>`;
+        }
+        return ``;
+    };
+
+    const exerciseDB = {
+        chest: { id: "ex_chest", name: "プッシュアップ", anim: "pushup", defaultReps: 10, defaultSets: 3, targets: ["胸", "腕", "肩"], hKey: "胸", note: "手首を痛めないようヨガマットの使用をおすすめします。" },
+        abs: { id: "ex_abs", name: "クランチ", anim: "crunch", defaultReps: 15, defaultSets: 3, targets: ["腹筋"], hKey: "腹筋", note: "器具不要。腰が浮かないように意識してください。" },
+        squat: { id: "ex_squat", name: "自重スクワット", anim: "squat", defaultReps: 15, defaultSets: 3, targets: ["大腿四頭筋", "臀部", "ハムストリング"], hKey: "大腿四頭筋", note: "器具不要。膝がつま先より前に出ないよう、お尻を深く引きます。" },
+        calf: { id: "ex_calf", name: "カーフレイズ", anim: "calf", defaultReps: 20, defaultSets: 3, targets: ["ふくらはぎ"], hKey: "ふくらはぎ", note: "壁に手をついてバランスを取り、踵を高く持ち上げます。" },
+        back: { id: "ex_back", name: "バックエクステンション", anim: "back", defaultReps: 12, defaultSets: 3, targets: ["下背部", "上背部", "肩", "首"], hKey: "上背部", note: "反動を使わずゆっくりと持ち上げてください。" },
+        pike: { id: "ex_pike", name: "パイクプッシュアップ", anim: "pike", defaultReps: 8, defaultSets: 3, targets: ["肩"], hKey: "肩", note: "足を高くして重心を前にかける強度高めのメニューです。" },
+        curl: { id: "ex_curl", name: "タオル・アームカール", anim: "curl", defaultReps: 12, defaultSets: 3, targets: ["腕"], hKey: "腕", note: "※フェイスタオル等の長い布が必要です。足で踏んで腕で引っ張ります。" }
+    };
+
+    function generateWorkoutMenu() {
+        if (selectedMuscles.size === 0) return alert("筋肉部位を1つ以上選択してください。");
+        let keys = new Set();
+        selectedMuscles.forEach(m => {
+            if(["胸", "首"].includes(m)) keys.add("chest");
+            if(["腹筋"].includes(m)) keys.add("abs");
+            if(["大腿四頭筋", "臀部", "ハムストリング", "内転筋"].includes(m)) keys.add("squat");
+            if(["ふくらはぎ"].includes(m)) keys.add("calf");
+            if(["下背部", "上背部", "首"].includes(m)) keys.add("back");
+            if(["肩"].includes(m)) keys.add("pike");
+            if(["腕"].includes(m)) keys.add("curl");
+        });
+        const container = document.getElementById('generatedWorkoutList'); container.innerHTML = "";
+        keys.forEach(k => {
+            const ex = exerciseDB[k]; 
+            const badges = ex.targets.map(t => `<span class="badge">${t}</span>`).join('');
+            const div = document.createElement('div'); div.className = "routine-item";
+            
+            div.innerHTML = `
+                <div class="anim-box">${getSVGAnim(ex.anim, ex.hKey)}</div>
+                <div class="routine-info">
+                    <h4>${ex.name}</h4>
+                    <div class="target-badges">${badges}</div>
+                    <div class="equipment-note">📝 ${ex.note}</div>
+                    <div class="routine-controls">
+                        <input type="number" id="sets_${ex.id}" value="${ex.defaultSets}"> セット × 
+                        <input type="number" id="reps_${ex.id}" value="${ex.defaultReps}"> 回
+                        <button class="btn-primary" onclick="addToMenu('${k}')">追加</button>
+                    </div>
+                </div>`;
+            container.appendChild(div);
+        });
+        document.getElementById('generatedMenuCard').style.display = 'block';
+    }
+    function addToMenu(key) {
+        const ex = exerciseDB[key];
+        const s = document.getElementById(`sets_${ex.id}`).value, r = document.getElementById(`reps_${ex.id}`).value;
+        const db = getDB(); db[currentUser].data.routine = db[currentUser].data.routine || [];
+        db[currentUser].data.routine.push({ name: ex.name, sets: s, reps: r, id: Date.now() }); saveDB(db);
+        renderMyMenu(); alert(`${ex.name}をメニューに追加しました！`);
+    }
+    function renderMyMenu() {
+        const db = getDB(); const routine = db[currentUser].data.routine || [];
+        const ul = document.getElementById('myMenuList'); ul.innerHTML = "";
+        if(routine.length === 0) return ul.innerHTML = '<li style="color:#999; font-size:0.9rem;">まだメニューが組まれていません。上のリストから追加してください。</li>';
+        routine.forEach(item => {
+            const li = document.createElement('li'); li.className = "my-menu-item";
+            li.innerHTML = `<span><strong>${item.name}</strong><br><small>${item.sets}セット × ${item.reps}回</small></span><button class="btn-delete" onclick="removeFromMenu(${item.id})">×</button>`;
+            ul.appendChild(li);
+        });
+    }
+    function removeFromMenu(id) {
+        const db = getDB(); db[currentUser].data.routine = db[currentUser].data.routine.filter(i => i.id !== id); saveDB(db); renderMyMenu();
+    }
+
+    // ==================== 3. センサー計測 ＆ カメラエラー処理 ====================
+    let trackingMode = 'manual', autoStepCount = 0, lastAccelZ = 0, isTracking = false;
+    function setTrackingMode(mode) {
+        trackingMode = mode;
+        document.getElementById('btnManual').classList.remove('active'); document.getElementById('btnAuto').classList.remove('active');
+        if(mode === 'auto') {
+            document.getElementById('btnAuto').classList.add('active'); document.getElementById('autoTrackSection').style.display = 'block';
+            document.getElementById('steps').readOnly = true; document.getElementById('distance').readOnly = true;
+        } else {
+            document.getElementById('btnManual').classList.add('active'); document.getElementById('autoTrackSection').style.display = 'none';
+            document.getElementById('steps').readOnly = false; document.getElementById('distance').readOnly = false; stopAutoTracking();
+        }
+    }
+    function startAutoTracking() {
+        isTracking = true; document.getElementById('trackingStatus').innerText = '自動追跡中...';
+        document.getElementById('btnStartAuto').disabled = true; document.getElementById('btnStopAuto').disabled = false;
+        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+            DeviceMotionEvent.requestPermission().then(s => { if (s === 'granted') window.addEventListener('devicemotion', handleMotion); });
+        } else { window.addEventListener('devicemotion', handleMotion); }
+    }
+    function handleMotion(e) {
+        if (!isTracking) return; const accel = e.accelerationIncludingGravity; if (!accel) return;
+        const change = Math.abs(accel.z - lastAccelZ); lastAccelZ = accel.z;
+        if (change > 3.5) { autoStepCount++; document.getElementById('steps').value = autoStepCount; }
+    }
+    function stopAutoTracking() {
+        isTracking = false; document.getElementById('btnStartAuto').disabled = false; document.getElementById('btnStopAuto').disabled = true;
+        document.getElementById('trackingStatus').innerText = '計測終了'; window.removeEventListener('devicemotion', handleMotion);
+    }
+
+    // カメラ機能（エラーハンドリングとHTTPS案内を含む）
+    let isCameraOn = false, mediaStream = null;
+    async function toggleFormCamera() {
+        const video = document.getElementById('webcamPreview');
+        const container = document.getElementById('webcamContainer');
+        const btn = document.getElementById('btnCameraToggle');
+        const status = document.getElementById('cameraStatus');
+
+        if (!isCameraOn) {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                status.innerHTML = "⚠️ お使いのブラウザ、または現在の通信環境（HTTP）ではカメラ機能がサポートされていません。<br>※セキュリティ上の理由により、HTTPS通信の環境でご利用いただく必要があります。";
+                return;
+            }
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                video.srcObject = mediaStream;
+                container.style.display = 'block';
+                btn.innerText = 'カメラを停止する';
+                btn.style.backgroundColor = 'var(--danger-color)';
+                status.innerText = '';
+                isCameraOn = true;
+            } catch (err) {
+                status.innerText = "⚠️ カメラへのアクセスが拒否されたか、対応していないブラウザです。スマートフォンの設定からカメラの権限を許可してください。";
+            }
+        } else {
+            if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+            video.srcObject = null;
+            container.style.display = 'none';
+            btn.innerText = 'カメラを起動してフォーム確認';
+            btn.style.backgroundColor = '#2196f3';
+            isCameraOn = false;
+        }
+    }
+
+    // ==================== 4. AIコーチ（ジム/家対応・5段階指導） ====================
+    function updateCoachInputFields() {
+        const ex = document.getElementById('coachExercise').value;
+        const weightInput = document.getElementById('coachPrevWeight');
+        weightInput.disabled = ['pushup', 'squat_body', 'crunch'].includes(ex);
+        if(weightInput.disabled) weightInput.value = '';
+    }
+    
+    function runAICoachDiagnosis() {
+        const fat = parseInt(document.getElementById('coachFatigue').value);
+        const cond = document.getElementById('coachCondition').value;
+        const ex = document.getElementById('coachExercise').value;
+        const pWeight = parseFloat(document.getElementById('coachPrevWeight').value) || 0;
+        const pReps = parseInt(document.getElementById('coachPrevReps').value) || 0;
+        
+        let advice = "", menu = "";
+        const isBodyWeight = ['pushup', 'squat_body', 'crunch'].includes(ex);
+        
+        if (cond === 'bad' || fat === 5) {
+            advice = "🚨 <strong>【AI分析アラート：完全休養推奨】</strong><br>関節や筋腱に違和感、または極度の疲労状態です。トレーニングを行うと怪我のリスクが跳ね上がります。本日の実技はスキップし、超回復を促してください。";
+            menu = "【推奨アクション】<br>・完全アクティブレスト<br>・湯船に浸かり血流を促進<br>・睡眠時間を通常より1時間多く確保";
+        } else if (fat === 4 && cond !== 'good') {
+            advice = "⚠️ <strong>【AI分析：デロード（積極的休養）期】</strong><br>蓄積疲労が見られます。本日は筋肉を追い込むのではなく、フォームの正確さと血流促進による回復を目的としてください。";
+            if (isBodyWeight) {
+                menu = "【推奨負荷(家トレ)】<br>自重の半分の可動域で、ゆっくりとした動作を10回×2セットのみ行い終了する。";
+            } else {
+                menu = pWeight > 0 ? `【推奨負荷(ジムトレ)】<br>${(pWeight * 0.5).toFixed(1)} kg × ${pReps}回 × 2セット<br>※通常の50%の重量で、フォームの美しさだけを追求してください。` : "重量を通常の半分に落とし、フォーム確認に留めてください。";
+            }
+        } else if (fat === 3) {
+            advice = "🔋 <strong>【AI分析：メンテナンス維持期】</strong><br>標準的なコンディションです。前回の記録を維持し、筋肉に適切な刺激を与えて現状の筋力をキープしましょう。無理な限界突破は禁物です。";
+            if (isBodyWeight) {
+                menu = `【推奨負荷(家トレ)】<br>前回と同じ ${pReps || 10} 回数を、反動を使わないブレのないフォームで完遂する（3セット）。`;
+            } else {
+                menu = pWeight > 0 ? `【推奨負荷(ジムトレ)】<br>${pWeight} kg × ${pReps}回 × 3セット<br>※前回と全く同じ負荷・回数をこなし、安定した実力を確認します。` : "前回と同じ重量・回数を目標に3セット行ってください。";
+            }
+        } else if (fat <= 2 && cond === 'normal') {
+            advice = "📈 <strong>【AI分析：プログレッシブ・オーバーロード推奨】</strong><br>疲労が抜けており、成長のチャンスです。筋肉に新たな刺激を与えるため、前回よりも少しだけ強度を上げてみましょう。";
+            if (isBodyWeight) {
+                menu = `【推奨負荷(家トレ)】<br>前回より+2回（目標: ${pReps ? pReps + 2 : 12}回）多くレップスを行う、またはセット間休憩を10秒短縮して強度を高める。`;
+            } else {
+                menu = pWeight > 0 ? `【推奨負荷(ジムトレ)】<br>${(pWeight * 1.05).toFixed(1)} kg × ${Math.max(1, pReps - 2)}〜${pReps}回 × 3セット<br>※重量を約5%アップし、回数が少し減っても挑戦します。` : "前回より一つ重いプレート/ダンベルに挑戦してください。";
+            }
+        } else if (fat === 1 && cond === 'good') {
+            advice = "🔥 <strong>【AI分析：パーソナルレコード(PR)挑戦期】</strong><br>心身ともに絶好調です！神経系の働きも鋭く、最大筋力を更新する絶好のタイミング。限界に挑戦しましょう！";
+            if (isBodyWeight) {
+                menu = "【推奨負荷(家トレ)】<br>限界回数（フォームが崩れる直前まで）× 3〜4セット。ネガティブ動作（下ろす時）を極端に遅くして負荷を最大化してください。";
+            } else {
+                menu = pWeight > 0 ? `【推奨負荷(ジムトレ)】<br>${(pWeight * 1.05).toFixed(1)} kg以上 × ${pReps}回 × 3セット<br>※限界突破を狙います。1セット目から全力を出し切ってください！` : "自己ベストの更新を狙う重量設定で挑んでください！";
+            }
+        }
+        
+        document.getElementById('coachResultBox').innerHTML = `<p>${advice}</p><div style='background:#fff; padding:10px; margin-top:10px; border-radius:4px; font-size:0.9rem; border-left:3px solid var(--primary-color);'>${menu}</div>`;
+        document.getElementById('coachResultCard').style.display = 'block';
+    }
+
+    // ==================== 5. タイマー ====================
+    let timerMode = 'stopwatch', timerInterval = null, startTime = 0, elapsedTime = 0;
+    function switchTimerMode(mode) {
+        timerMode = mode; stopTimer(); elapsedTime = 0;
+        document.getElementById('btnModeStopwatch').classList.remove('active'); document.getElementById('btnModeCountdown').classList.remove('active');
+        if (mode === 'countdown') { document.getElementById('btnModeCountdown').classList.add('active'); document.getElementById('countdownSettings').style.display = 'block'; document.getElementById('timerDisplay').innerText = "00:03:00"; }
+        else { document.getElementById('btnModeStopwatch').classList.add('active'); document.getElementById('countdownSettings').style.display = 'none'; document.getElementById('timerDisplay').innerText = "00:00:00"; }
+    }
+    function startTimer() {
+        if (timerInterval) return;
+        if (timerMode === 'stopwatch') { startTime = Date.now() - elapsedTime; timerInterval = setInterval(() => { elapsedTime = Date.now() - startTime; updateDisplay(elapsedTime); }, 100); }
+        else {
+            if (elapsedTime === 0) elapsedTime = ((parseInt(document.getElementById('cdMinutes').value) * 60) + parseInt(document.getElementById('cdSeconds').value)) * 1000;
+            startTime = Date.now(); const init = elapsedTime;
+            timerInterval = setInterval(() => { let left = init - (Date.now() - startTime); if (left <= 0) { stopTimer(); alert('時間です！'); resetTimer(); } else updateDisplay(left); }, 100);
+        }
+    }
+    function stopTimer() { clearInterval(timerInterval); timerInterval = null; }
+    function resetTimer() { stopTimer(); elapsedTime = 0; document.getElementById('timerDisplay').innerText = timerMode === 'stopwatch' ? "00:00:00" : `00:${String(document.getElementById('cdMinutes').value).padStart(2,'0')}:${String(document.getElementById('cdSeconds').value).padStart(2,'0')}`; }
+    function updateDisplay(ms) { const s = Math.floor(ms / 1000); document.getElementById('timerDisplay').innerText = String(Math.floor(s/3600)).padStart(2,'0') + ':' + String(Math.floor((s%3600)/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0'); }
+
+    // ==================== 6. 食事解析 ＆ レシピ拡充 ====================
+    function calculateScore() {
+        const score = Math.floor(((Number(document.getElementById('steps').value) || 0) / 100) + ((Number(document.getElementById('distance').value) || 0) * 10) + ((Number(document.getElementById('duration').value) || 0) * 2));
+        document.getElementById('trainingScore').innerText = score;
+        const db = getDB(); db[currentUser].data.score = score; saveDB(db); alert('実績スコアを保存しました。');
+    }
+
+    // レシピ拡充・詳細化
+    const recipeDB = {
+        diet: [
+            { 
+                title: "【減量】鶏むね肉のしっとりサラダチキン", 
+                desc: "【材料】鶏むね肉250g、塩、酒<br>【作り方】肉にフォークで数カ所穴を開け、塩と酒を揉み込みます。耐熱容器に入れラップをし、レンジ(600W)で3分加熱。裏返してさらに2分加熱後、粗熱が取れるまで余熱で中まで火を通します。", 
+                effect: "【効果】低脂質・高タンパク質の王道メニュー。筋肉量を維持しながら、基礎代謝を落とさずに脂肪燃焼をサポートします。" 
+            },
+            { 
+                title: "【減量】タラとキノコのホイル焼き", 
+                desc: "【材料】生タラ1切れ、しめじ、えのき、ポン酢<br>【作り方】アルミホイルにタラとキノコ類を乗せてしっかりと包みます。フライパンに少量の水を張り、蓋をして中火で約10分蒸し焼きにします。ポン酢をかけて完成。", 
+                effect: "【効果】白身魚は極めて脂質が低く、ダイエット中のタンパク源として優秀です。キノコの食物繊維が血糖値の急上昇を抑え、脂肪の蓄積を防ぎます。" 
+            },
+            { 
+                title: "【減量】豆腐としらたきの満腹ピリ辛スープ", 
+                desc: "【材料】絹ごし豆腐150g、しらたき100g、キムチ、鶏ガラスープの素<br>【作り方】鍋にお湯を沸かし、あく抜きしたしらたきと崩した豆腐を入れます。鶏ガラスープの素とキムチを加え、ひと煮立ちさせたら完成。", 
+                effect: "【効果】しらたきでカロリーを大幅にカットしつつ満腹感を得られます。カプサイシンが交感神経を刺激し、体脂肪の燃焼を促進します。" 
+            },
+            { 
+                title: "【減量】鶏ささみとオクラの梅肉和え", 
+                desc: "【材料】鶏ささみ2本、オクラ5本、梅干し1個、白だし<br>【作り方】ささみを茹でて細かく裂き、オクラも茹でて小口切りにします。叩いた梅干しと白だしで全体をよく和えます。", 
+                effect: "【効果】梅干しのクエン酸が疲労回復を促し、オクラのネバネバ成分（ペクチン）が腸内環境を整え、ダイエット中の便秘を予防します。" 
+            }
+        ],
+        bulk: [
+            { 
+                title: "【増量】豚ロースのスタミナ生姜焼き", 
+                desc: "【材料】豚ロース肉150g、玉ねぎ1/2個、醤油、みりん、酒、すりおろし生姜<br>【作り方】豚肉と薄切りの玉ねぎを油を引いたフライパンで炒めます。火が通ったら、すべての調味料を混ぜ合わせたタレを回し入れ、全体に絡めます。", 
+                effect: "【効果】豚肉に豊富なビタミンB1が、一緒に摂取したご飯（糖質）を効率よくエネルギーに変換し、高強度のトレーニングを可能にします。" 
+            },
+            { 
+                title: "【増量】牛赤身肉のガーリックステーキ", 
+                desc: "【材料】牛ももステーキ肉200g、にんにくスライス、塩胡椒、牛脂<br>【作り方】フライパンに牛脂とにんにくを入れ、香りが立ったら常温に戻した牛肉を入れます。強火で両面に焼き色をつけ、塩胡椒でシンプルに味付けします。", 
+                effect: "【効果】牛肉には筋力アップに直結するクレアチンと、男性ホルモンを活性化させる亜鉛が豊富に含まれており、筋肥大を強力に後押しします。" 
+            },
+            { 
+                title: "【増量】マグロとアボカドの爆弾丼", 
+                desc: "【材料】マグロの赤身100g、アボカド半分、卵黄1個、ご飯大盛り、ごま油、醤油<br>【作り方】丼にご飯を盛り、角切りにしたマグロとアボカドを乗せます。中央に卵黄を落とし、ごま油と醤油を回しかけます。", 
+                effect: "【効果】良質なタンパク質（マグロ）と、バルクアップに必要な健康的な脂質（アボカド・卵黄）を同時に摂取できる最強の増量食です。" 
+            },
+            { 
+                title: "【増量】鶏もも肉とブロッコリーのチーズ焼き", 
+                desc: "【材料】鶏もも肉200g、ブロッコリー100g、とろけるチーズ30g<br>【作り方】鶏もも肉を一口大に切り、下茹でしたブロッコリーと一緒に耐熱皿に並べます。上からチーズをたっぷりかけ、トースターで焦げ目がつくまで焼きます。", 
+                effect: "【効果】ブロッコリーのビタミンCとテストステロン維持効果に加え、チーズのカロリーとカルシウムで、バルクアップ期の栄養を底上げします。" 
+            }
+        ],
+        keep: [
+            { 
+                title: "【健康維持】鮭と野菜のホイル焼き", 
+                desc: "【材料】生鮭1切れ、玉ねぎ、にんじん、しめじ、バター5g<br>【作り方】アルミホイルにスライスした野菜を敷き、その上に鮭とバターを乗せて包みます。フライパンで蓋をして中火〜弱火で15分蒸し焼きにします。", 
+                effect: "【効果】鮭に含まれるアスタキサンチンが活性酸素を除去し、オメガ3脂肪酸が血液をサラサラにして血管年齢を若く保ちます。" 
+            },
+            { 
+                title: "【健康維持】鶏もも肉と彩り野菜の黒酢炒め", 
+                desc: "【材料】鶏もも肉100g、パプリカ（赤・黄）、ナス、黒酢、醤油、砂糖<br>【作り方】野菜と鶏肉を乱切りにし、フライパンで炒めます。火が通ったら黒酢、醤油、砂糖で作った合わせ調味料を加え、とろみがつくまで絡めます。", 
+                effect: "【効果】黒酢のアミノ酸が血流を改善し、彩り野菜のビタミン類が免疫力を高めます。バランスの取れた定食のメインとして最適です。" 
+            },
+            { 
+                title: "【健康維持】サバのトマト煮込み", 
+                desc: "【材料】サバの水煮缶1個、カットトマト缶1/2、玉ねぎ1/2個、コンソメ<br>【作り方】鍋に薄切りにした玉ねぎ、トマト缶、サバ缶を汁ごと入れます。コンソメを加えて中火で10分ほど煮込み、水分を飛ばします。", 
+                effect: "【効果】サバ缶のDHA/EPAと、トマトのリコピンの相乗効果で、アンチエイジングと生活習慣病の予防に極めて高い効果を発揮します。" 
+            },
+            { 
+                title: "【健康維持】豚しゃぶとたっぷり野菜のサラダ", 
+                desc: "【材料】豚しゃぶしゃぶ用肉100g、レタス、きゅうり、トマト、ごまドレッシング<br>【作り方】豚肉を沸騰直前のお湯でサッと茹で、冷水に取ります。ちぎった野菜の上に豚肉を乗せ、ごまドレッシングをかけます。", 
+                effect: "【効果】野菜から食物繊維をしっかり摂りながら、豚肉でタンパク質を補給。消化に良く、胃腸に負担をかけずに栄養を吸収できます。" 
+            }
+        ]
+    };
+
+    function saveProfileAndGenerateAdvice() {
+        const height = Number(document.getElementById('height').value);
+        const weight = Number(document.getElementById('weight').value);
+        const age = Number(document.getElementById('age').value) || 30;
+        const gender = document.getElementById('gender').value;
+        if(!height || !weight) return alert("身長と体重を入力してください。");
+        
+        const db = getDB(); const today = new Date().toLocaleDateString();
+        const idx = db[currentUser].data.weight_history.findIndex(d => d.date === today);
+        if(idx >= 0) db[currentUser].data.weight_history[idx].weight = weight; else db[currentUser].data.weight_history.push({date:today, weight:weight});
+        
+        // 1. BMI計算
+        const bmi = weight / ((height/100) * (height/100));
+        document.getElementById('currentBmiDisplay').innerText = bmi.toFixed(1);
+
+        // 2. 基礎代謝(BMR)計算 (Mifflin-St Jeor式)
+        let bmr = (10 * weight) + (6.25 * height) - (5 * age) + (gender === 'male' ? 5 : -161);
+        let tdee = bmr * 1.5; // アクティブ度合い中程度の推定消費カロリー
+
+        // 3. 超具体的アドバイスの生成
+        let targetKey = "keep";
+        let advTitle = "", advTraining = "", advDiet = "", advFreq = "";
+
+        if (bmi >= 25) {
+            targetKey = "diet";
+            advTitle = "🔥 脂肪燃焼＆シェイプアップ推奨";
+            advTraining = "筋力トレーニング（無酸素）を30分行った後に、20分以上の有酸素運動（ウォーキングや軽いジョギング）を行うと脂肪燃焼効果が最大化します。スクワットなどカロリー消費の高い「脚の種目」を週に1回必ず入れてください。";
+            advDiet = `目標摂取カロリーは1日約${Math.floor(tdee - 400)} kcalです。筋肉を減らさないためにタンパク質を1日約${Math.floor(weight * 1.5)}g確保し、揚げ物や洋菓子の脂質を徹底的に抑えましょう。`;
+            advFreq = "週3〜4回（筋トレメイン2回 ＋ 有酸素メイン2回）";
+        } else if (bmi < 18.5) {
+            targetKey = "bulk";
+            advTitle = "💪 筋肥大＆バルクアップ推奨";
+            advTraining = "筋肉を大きくするため、8〜10回で限界がくる「重い負荷」でのジムトレ、または自重なら動作を極端にゆっくり行うスロートレーニングを取り入れてください。有酸素運動は筋肉の合成を阻害するため週1回以下に留めましょう。";
+            advDiet = `目標摂取カロリーは1日約${Math.floor(tdee + 500)} kcalです。筋肉の材料となるタンパク質（約${Math.floor(weight * 2.0)}g）と、トレーニングのエネルギーとなる炭水化物（白米など）を3食＋間食でしっかり補給してください。`;
+            advFreq = "週3回（1回45分〜1時間以内で、短時間で限界まで追い込む）";
+        } else {
+            targetKey = "keep";
+            advTitle = "✨ 健康維持＆ボディメイク推奨";
+            advTraining = "現在の優れた適正体型を維持・引き締めるため、胸・背中・脚などの大きな筋肉をバランス良く鍛える全身法をローテーションしましょう。";
+            advDiet = `目標摂取カロリーは現状維持の1日約${Math.floor(tdee)} kcalです。タンパク質（約${Math.floor(weight * 1.2)}g）を確保しつつ、野菜からビタミン・ミネラルを摂取して代謝を良く保ちましょう。`;
+            advFreq = "週2〜3回（無理のないペースで、習慣化を第一に）";
+        }
+
+        const advHTML = `
+            <h4 style="color:var(--primary-color); margin-bottom:10px; font-size:1.1rem;">${advTitle}</h4>
+            <ul style="padding-left:20px; font-size:0.9rem; line-height:1.7; color:#444;">
+                <li><strong>基礎代謝目安(BMR):</strong> 約${Math.floor(bmr)} kcal/日</li>
+                <li><strong>1日の消費カロリー目安(TDEE):</strong> 約${Math.floor(tdee)} kcal/日</li>
+                <li><strong>目標トレーニング頻度:</strong> ${advFreq}</li>
+                <li style="margin-top:8px;"><strong>🏋️‍♂️ 具体的なトレーニング:</strong><br>${advTraining}</li>
+                <li style="margin-top:8px;"><strong>🍽️ 具体的な食事・栄養:</strong><br>${advDiet}</li>
+            </ul>
+        `;
+        
+        // 4. ランダムレシピの選択
+        const recipesList = recipeDB[targetKey];
+        const randomRecipe = recipesList[Math.floor(Math.random() * recipesList.length)];
+        let rcpHTML = `
+            <div class="recipe-item">
+                <div class='recipe-title'>🍽️ ${randomRecipe.title}</div>
+                <p style='margin-top:5px; font-size:0.9rem; line-height:1.6;'>${randomRecipe.desc}</p>
+                <p style='margin-top:5px; font-size:0.9rem; line-height:1.6; color:#c62828;'>${randomRecipe.effect}</p>
+            </div>
+        `;
+        
+        document.getElementById('adviceContent').innerHTML = advHTML;
+        document.getElementById('recipeContent').innerHTML = rcpHTML;
+        
+        db[currentUser].data.advice = advHTML;
+        db[currentUser].data.recipe = rcpHTML;
+        db[currentUser].data.weight = weight;
+        db[currentUser].data.height = height;
+        saveDB(db); 
+        renderChart(); 
+        alert('プロフィールを分析し、AIアドバイスとレシピを更新しました！');
+    }
+
+    let weightChartInstance = null;
+    function changeChartPeriod(p) { document.querySelectorAll('[id^="btn-chart-"]').forEach(b => b.classList.remove('active')); document.getElementById(`btn-chart-${p}`).classList.add('active'); renderChart(); }
+    function renderChart() {
+        const history = getDB()[currentUser].data.weight_history || []; if(history.length === 0) return;
+        const ctx = document.getElementById('weightChart').getContext('2d'); if(weightChartInstance) weightChartInstance.destroy();
+        weightChartInstance = new Chart(ctx, { type: 'line', data: { labels: history.map(d=>d.date), datasets:[{ label:'体重(kg)', data:history.map(d=>d.weight), borderColor:'#4CAF50', backgroundColor:'rgba(76,175,80,0.1)', borderWidth:3, fill:true, tension:0.15 }] }, options:{ responsive:true, maintainAspectRatio:false } });
+    }
+    function loadUserData() {
+        const db = getDB(); const userData = db[currentUser].data;
+        document.getElementById('weight').value = userData.weight || ''; 
+        document.getElementById('height').value = userData.height || ''; 
+        document.getElementById('trainingScore').innerText = userData.score || 0;
+        document.getElementById('recordDate').valueAsDate = new Date();
+        if(userData.advice) document.getElementById('adviceContent').innerHTML = userData.advice;
+        if(userData.recipe) document.getElementById('recipeContent').innerHTML = userData.recipe;
+        
+        if (userData.weight && userData.height) {
+            const bmi = userData.weight / ((userData.height/100) * (userData.height/100));
+            document.getElementById('currentBmiDisplay').innerText = bmi.toFixed(1);
+        }
+
+        renderChart();
+    }
+
+    const dummyMeals = [{name:"彩りサラダとグリルチキン",cal:380,p:34,f:10,c:15},{name:"紅鮭の塩焼き玄米定食",cal:540,p:29,f:12,c:62},{name:"牛赤身ステーキ",cal:610,p:45,f:22,c:10}];
+    function previewMealPhoto(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const r = new FileReader(); r.onload = (evt) => { const img = document.getElementById('mealPhotoPreview'); img.src = evt.target.result; img.style.display = 'block'; document.getElementById('btnAnalyzeMeal').style.display='block'; }; r.readAsDataURL(file);
+        }
+    }
+    function analyzeMealCalories() {
+        document.getElementById('btnAnalyzeMeal').style.display = 'none'; document.getElementById('mealLoading').style.display = 'block';
+        setTimeout(() => {
+            document.getElementById('mealLoading').style.display = 'none';
+            const m = dummyMeals[Math.floor(Math.random() * dummyMeals.length)];
+            document.getElementById('resultMealName').value = m.name; document.getElementById('resultCalories').value = m.cal;
+            document.getElementById('resultProtein').value = m.p; document.getElementById('resultFat').value = m.f; document.getElementById('resultCarbs').value = m.c;
+            document.getElementById('mealResultCard').style.display = 'block';
+        }, 1500);
+    }
+    function saveEstimatedMeal() { alert("食事ログを保存しました。"); document.getElementById('mealResultCard').style.display = 'none'; }
+
+    function generateFitnessPDF() {
+        document.getElementById('pdfReportDate').innerText = `作成日: ${new Date().toLocaleDateString()}`; document.getElementById('pdfUser').innerText = currentUser;
+        document.getElementById('pdfScore').innerText = document.getElementById('trainingScore').innerText;
+        const target = document.getElementById('pdfReportTemplate');
+        html2pdf().set({ margin: 15, filename: `fitness_report_${currentUser}.pdf`, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(target).save();
+    }
+    window.onload = function() {
+        const active = sessionStorage.getItem('fit_active_user');
+        if(active) { currentUser = active; launchApp(); } else { document.getElementById('authContainer').style.display = 'block'; }
+    };
+</script>
+</body>
+</html>
