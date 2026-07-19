@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FitManager Pro - アルティメット完全版</title>
+    
+    <!-- ホーム画面に追加した際のアプリアイコン設定 (自己完結型のSVGアイコン) -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="FitManager">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%234CAF50%22/><text x=%2250%22 y=%2272%22 font-size=%2265%22 text-anchor=%22middle%22 fill=%22white%22 font-weight=%22bold%22 font-family=%22Arial,sans-serif%22>F</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%234CAF50%22/><text x=%2250%22 y=%2272%22 font-size=%2265%22 text-anchor=%22middle%22 fill=%22white%22 font-weight=%22bold%22 font-family=%22Arial,sans-serif%22>F</text></svg>">
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
@@ -207,7 +215,6 @@
                 <h3>リアル人体トレーニング部位マップ</h3>
                 <p style="font-size:0.85rem; color:#666; margin-bottom:15px;">イラストまたは下のボタンから、鍛えたい部位を選択してください（複数選択可）。</p>
                 
-                <!-- リアル筋肉マップ描画エリア -->
                 <div class="muscle-map-container">
                     <!-- 前面 (Front) -->
                     <svg class="human-figure" viewBox="-150 -20 350 480">
@@ -407,7 +414,6 @@
                         <button class="btn-start" style="flex:1; padding:10px; color:white; background-color:var(--primary-color); border:none; border-radius:4px;" id="btnStartAuto" onclick="startAutoTracking()">開始</button>
                         <button class="btn-stop" style="flex:1; padding:10px; color:white; background-color:var(--danger-color); border:none; border-radius:4px;" id="btnStopAuto" onclick="stopAutoTracking()" disabled>停止</button>
                     </div>
-                    <div id="troubleGuide" class="trouble-box"><h4>⚠️ エラー</h4><div id="troubleText"></div></div>
                 </div>
                 <div class="form-group"><label>日付</label><input type="date" id="recordDate"></div>
                 <div class="form-group"><label>歩数 (歩)</label><input type="number" id="steps" placeholder="例: 8000"></div>
@@ -419,8 +425,7 @@
             <div class="card">
                 <h3 style="text-align: center;">今日のトレーニングスコア</h3>
                 <div style="font-size: 3.5rem; color: var(--primary-color); text-align: center; font-weight: bold;" id="trainingScore">0</div>
-                <!-- 追加：スコアのレベル評価を表示 -->
-                <div id="scoreRankText" style="text-align: center; font-weight: bold; margin-bottom: 10px; color: var(--accent-color); font-size: 1.1rem;"></div>
+                <div id="scoreRankText" style="text-align: center; font-weight: bold; margin-bottom: 10px; color: var(--accent-color); font-size: 1.1rem;">記録がありません。運動を始めましょう！</div>
                 
                 <p style="font-size: 0.85rem; color: #666; text-align: center; margin-top: 10px; background-color: #f0fdf4; padding: 10px; border-radius: 6px;">
                     <strong>【スコア算出の指標】</strong><br>
@@ -428,6 +433,19 @@
                     距離: 1km ＝ 10pt<br>
                     時間: 1分 ＝ 2pt
                 </p>
+
+                <!-- ★モチベーション指標一覧の追加★ -->
+                <div style="margin-top: 15px; background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 10px; font-size: 0.85rem;">
+                    <strong style="display:block; text-align:center; margin-bottom:8px; color:var(--primary-color);">🏆 モチベーション指標（ランク一覧）</strong>
+                    <ul style="list-style: none; padding: 0; line-height: 1.6; color: #444;">
+                        <li style="border-bottom: 1px dashed #eee; padding: 4px 0;"><strong>0pt</strong> : 記録なし</li>
+                        <li style="border-bottom: 1px dashed #eee; padding: 4px 0;"><strong>1〜30pt</strong> : 🌱 運動不足レベル（まずは歩く習慣を！）</li>
+                        <li style="border-bottom: 1px dashed #eee; padding: 4px 0;"><strong>31〜70pt</strong> : 🚶 軽い運動レベル（健康維持の良いペース！）</li>
+                        <li style="border-bottom: 1px dashed #eee; padding: 4px 0;"><strong>71〜150pt</strong> : 🔥 アクティブレベル（脂肪燃焼効果大！）</li>
+                        <li style="border-bottom: 1px dashed #eee; padding: 4px 0;"><strong>151〜250pt</strong> : 🏃 アスリートレベル（素晴らしい運動量です！）</li>
+                        <li style="padding: 4px 0;"><strong>251pt〜</strong> : 👑 スーパーアスリートレベル（休息も大切に！）</li>
+                    </ul>
+                </div>
             </div>
             
             <div class="card">
@@ -507,37 +525,35 @@
         <!-- タブ5: 食事・カロリー -->
         <div id="DietTab" class="tab-content">
             <div class="card">
-                <h3>🍽️ 食事解析 ＆ カロリー推定</h3>
+                <h3>🍽️ 食事の記録 ＆ 栄養管理</h3>
+                
                 <div class="form-group">
                     <label>料理写真をアップロード、または撮影</label>
                     <input type="file" id="mealImageInput" accept="image/*" onchange="previewMealPhoto(event)">
                 </div>
+                
+                <!-- 写真プレビュー領域 -->
                 <div id="mealPhotoContainer" style="text-align: center; margin-bottom: 15px;">
                     <img id="mealPhotoPreview" style="max-width: 100%; max-height: 250px; border-radius: 8px; display: none; margin: 0 auto; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
                 </div>
                 
-                <button class="btn-primary" id="btnAnalyzeMeal" onclick="analyzeMealCalories()" style="background-color:var(--accent-color); display:none;">AIで推定する</button>
-                
-                <div id="mealLoading" style="display:none; text-align:center; margin:20px 0;">
-                    <span style="font-weight:bold; color:var(--accent-color);">🔍 画像をAI解析中...</span>
+                <!-- ★ 手動入力フォーム（AIシミュレーションを廃止し、ご自身で正確に管理できる仕様に変更） ★ -->
+                <div id="mealInputArea">
+                    <p style="font-size: 0.85rem; color: #555; margin-bottom: 15px; background: #fff3e0; padding: 10px; border-radius: 4px; border-left: 4px solid var(--accent-color);">
+                        写真を確認しながら、ご自身でメニュー名と栄養価を入力して記録しましょう。
+                    </p>
+                    <div class="form-group"><label>メニュー名</label><input type="text" id="resultMealName" placeholder="例: ハンバーグと白米ライス"></div>
+                    <div class="form-group"><label>エネルギー (kcal)</label><input type="number" id="resultCalories" placeholder="例: 850"></div>
+                    
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:15px;">
+                        <div class="form-group" style="margin-bottom:0;"><label>タンパク質 (g)</label><input type="number" id="resultProtein" placeholder="例: 35"></div>
+                        <div class="form-group" style="margin-bottom:0;"><label>脂質 (g)</label><input type="number" id="resultFat" placeholder="例: 45"></div>
+                        <div class="form-group" style="margin-bottom:0;"><label>炭水化物 (g)</label><input type="number" id="resultCarbs" placeholder="例: 80"></div>
+                        <div class="form-group" style="margin-bottom:0;"><label>食物繊維 (g)</label><input type="number" id="resultFiber" placeholder="例: 4"></div>
+                    </div>
+                    
+                    <button class="btn-primary" onclick="saveEstimatedMeal()">食事記録を保存</button>
                 </div>
-            </div>
-            
-            <div class="card" id="mealResultCard" style="display:none;">
-                <h3>推定結果（微調整可能）</h3>
-                <p style="font-size: 0.8rem; color: #888; margin-bottom: 15px;">※現在のアプリ環境ではランダムなシミュレーション結果を返します。</p>
-                <div class="form-group"><label>メニュー名</label><input type="text" id="resultMealName"></div>
-                <div class="form-group"><label>エネルギー (kcal)</label><input type="number" id="resultCalories"></div>
-                
-                <!-- 修正：PFCを分かりやすい日本語にし、食物繊維を追加（2×2のグリッド） -->
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:15px;">
-                    <div class="form-group" style="margin-bottom:0;"><label>タンパク質 (g)</label><input type="number" id="resultProtein"></div>
-                    <div class="form-group" style="margin-bottom:0;"><label>脂質 (g)</label><input type="number" id="resultFat"></div>
-                    <div class="form-group" style="margin-bottom:0;"><label>炭水化物 (g)</label><input type="number" id="resultCarbs"></div>
-                    <div class="form-group" style="margin-bottom:0;"><label>食物繊維 (g)</label><input type="number" id="resultFiber"></div>
-                </div>
-                
-                <button class="btn-primary" onclick="saveEstimatedMeal()">記録に保存</button>
             </div>
             
             <div class="card">
@@ -1019,19 +1035,17 @@
     function resetTimer() { stopTimer(); elapsedTime = 0; document.getElementById('timerDisplay').innerText = timerMode === 'stopwatch' ? "00:00:00" : `00:${String(document.getElementById('cdMinutes').value).padStart(2,'0')}:${String(document.getElementById('cdSeconds').value).padStart(2,'0')}`; }
     function updateDisplay(ms) { const s = Math.floor(ms / 1000); document.getElementById('timerDisplay').innerText = String(Math.floor(s/3600)).padStart(2,'0') + ':' + String(Math.floor((s%3600)/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0'); }
 
-    // ==================== 6. スコア計算 ＆ 食事解析 ====================
+    // ==================== 6. スコア計算 ＆ 食事管理(手動入力) ====================
     
-    // スコア計算ロジック（UIに指標とランクを表示）
+    // スコア計算ロジック
     function calculateScore() {
         const steps = Number(document.getElementById('steps').value) || 0;
         const dist = Number(document.getElementById('distance').value) || 0;
         const dur = Number(document.getElementById('duration').value) || 0;
         
-        // 指標に基づく計算
         const score = Math.floor((steps / 100) + (dist * 10) + (dur * 2));
         document.getElementById('trainingScore').innerText = score;
         
-        // スコアランクの判定
         let rankText = "";
         if(score === 0) rankText = "記録がありません。運動を始めましょう！";
         else if(score <= 30) rankText = "🌱 運動不足レベル（まずは歩く習慣を！）";
@@ -1049,6 +1063,34 @@
         alert(`スコア算出完了！\n合計: ${score}pt\n評価: ${rankText.split('（')[0]}`);
     }
 
+    // 写真のプレビュー表示機能
+    function previewMealPhoto(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const r = new FileReader(); 
+            r.onload = (evt) => { 
+                const img = document.getElementById('mealPhotoPreview'); 
+                img.src = evt.target.result; 
+                img.style.display = 'block'; 
+            }; 
+            r.readAsDataURL(file);
+        }
+    }
+
+    // 食事の手動記録保存
+    function saveEstimatedMeal() { 
+        alert("食事記録を保存しました。"); 
+        // 入力フォームをリセット
+        document.getElementById('resultMealName').value = "";
+        document.getElementById('resultCalories').value = "";
+        document.getElementById('resultProtein').value = "";
+        document.getElementById('resultFat').value = "";
+        document.getElementById('resultCarbs').value = "";
+        document.getElementById('resultFiber').value = "";
+        document.getElementById('mealPhotoPreview').style.display = 'none';
+        document.getElementById('mealImageInput').value = "";
+    }
+
     const recipeDB = {
         diet: [
             { title: "【減量】鶏むね肉のしっとりサラダチキン", desc: "【材料】鶏むね肉250g、塩、酒<br>【作り方】肉にフォークで穴を開け塩と酒を揉み込む。レンジ600Wで3分加熱し、裏返して2分加熱。余熱で中まで火を通す。", effect: "【効果】低脂質・高タンパク質の王道メニュー。筋肉量を維持しながら脂肪燃焼をサポートします。" },
@@ -1063,65 +1105,6 @@
             { title: "【健康維持】豚しゃぶとたっぷり野菜のサラダ", desc: "【材料】豚肉100g、レタス、きゅうり、ごまドレッシング<br>【作り方】豚肉をサッと茹でて冷まし、野菜の上に乗せてドレッシングをかける。", effect: "【効果】食物繊維を摂りながらタンパク質を補給。胃腸に負担をかけずに栄養を吸収できます。" }
         ]
     };
-
-    // 写真を選んだ瞬間・写真を撮影した瞬間に発動する関数
-    function previewMealPhoto(e) {
-        const file = e.target.files[0];
-        if (file) {
-            const r = new FileReader(); 
-            r.onload = (evt) => { 
-                const img = document.getElementById('mealPhotoPreview'); 
-                img.src = evt.target.result; 
-                img.style.display = 'block'; 
-                // ★「AIで推定する」ボタンを確実に表示★
-                document.getElementById('btnAnalyzeMeal').style.display = 'block'; 
-            }; 
-            r.readAsDataURL(file);
-        }
-    }
-
-    // ダミーの食事データ（メニューのレパートリーを大幅に拡充。食物繊維の項目も追加）
-    const dummyMeals = [
-        {name:"彩りサラダとグリルチキン", cal:380, p:34, f:10, c:15, fiber:6},
-        {name:"紅鮭の塩焼き玄米定食", cal:540, p:29, f:12, c:62, fiber:5},
-        {name:"牛赤身ステーキ", cal:610, p:45, f:22, c:10, fiber:1},
-        {name:"ハンバーグ定食（ライス付）", cal:850, p:30, f:45, c:80, fiber:4},
-        {name:"チーズハンバーグ定食", cal:950, p:35, f:55, c:80, fiber:4},
-        {name:"和風おろしハンバーグ定食", cal:750, p:30, f:35, c:80, fiber:5},
-        {name:"豚の生姜焼き定食", cal:780, p:28, f:35, c:85, fiber:3},
-        {name:"チキンカレーライス", cal:750, p:25, f:20, c:100, fiber:4},
-        {name:"ミックスサンドイッチ", cal:450, p:15, f:20, c:50, fiber:3},
-        {name:"鶏ささみとブロッコリー", cal:200, p:35, f:2, c:8, fiber:4},
-        {name:"海鮮丼", cal:600, p:35, f:15, c:80, fiber:1},
-        {name:"カルボナーラ", cal:800, p:20, f:45, c:75, fiber:2}
-    ];
-
-    // 「AIで推定する」ボタンを押したときの関数
-    function analyzeMealCalories() {
-        document.getElementById('btnAnalyzeMeal').style.display = 'none'; 
-        document.getElementById('mealLoading').style.display = 'block';
-        
-        // 1.5秒後に結果を出すシミュレーション
-        setTimeout(() => {
-            document.getElementById('mealLoading').style.display = 'none';
-            
-            // ランダムにメニューを選択して表示
-            const m = dummyMeals[Math.floor(Math.random() * dummyMeals.length)];
-            document.getElementById('resultMealName').value = m.name; 
-            document.getElementById('resultCalories').value = m.cal;
-            document.getElementById('resultProtein').value = m.p; 
-            document.getElementById('resultFat').value = m.f; 
-            document.getElementById('resultCarbs').value = m.c;
-            document.getElementById('resultFiber').value = m.fiber;
-            
-            document.getElementById('mealResultCard').style.display = 'block';
-        }, 1500);
-    }
-    
-    function saveEstimatedMeal() { 
-        alert("食事ログを保存しました。"); 
-        document.getElementById('mealResultCard').style.display = 'none'; 
-    }
 
     // プロフィール・アドバイスの生成
     function saveProfileAndGenerateAdvice() {
