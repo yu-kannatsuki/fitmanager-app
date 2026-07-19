@@ -4,15 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FitManager Pro - アルティメット完全版</title>
-        <!-- PWA用の設定読み込み -->
-    <link rel="manifest" href="manifest.json">
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js')
-                .then(reg => console.log('PWA Service Worker 登録成功'))
-                .catch(err => console.log('PWA Service Worker 登録失敗', err));
-        }
-    </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
@@ -152,7 +143,7 @@
         
         .webcam-container { width: 100%; max-width: 400px; margin: 15px auto; border-radius: 8px; overflow: hidden; background-color: #222; display: none; }
         #webcamPreview { width: 100%; height: auto; display: block; transform: scaleX(-1); }
-        #mealPhotoPreview { width: 100%; max-width: 300px; height: auto; display: none; border-radius: 8px; margin: 15px auto; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        
         .chart-container { position: relative; height: 250px; width: 100%; }
 
         #pdfReportContainer { position: fixed; top: 300vh; left: 0; width: 800px; background-color: white; z-index: -2000; pointer-events: none; opacity: 0; }
@@ -424,10 +415,21 @@
                 <div class="form-group"><label>運動時間 (分)</label><input type="number" id="duration" placeholder="例: 45"></div>
                 <button class="btn-primary" onclick="calculateScore()">記録してスコアを計算</button>
             </div>
+            
             <div class="card">
                 <h3 style="text-align: center;">今日のトレーニングスコア</h3>
                 <div style="font-size: 3.5rem; color: var(--primary-color); text-align: center; font-weight: bold;" id="trainingScore">0</div>
+                <!-- 追加：スコアのレベル評価を表示 -->
+                <div id="scoreRankText" style="text-align: center; font-weight: bold; margin-bottom: 10px; color: var(--accent-color); font-size: 1.1rem;"></div>
+                
+                <p style="font-size: 0.85rem; color: #666; text-align: center; margin-top: 10px; background-color: #f0fdf4; padding: 10px; border-radius: 6px;">
+                    <strong>【スコア算出の指標】</strong><br>
+                    歩数: 100歩 ＝ 1pt<br>
+                    距離: 1km ＝ 10pt<br>
+                    時間: 1分 ＝ 2pt
+                </p>
             </div>
+            
             <div class="card">
                 <h3>体重推移チャート</h3>
                 <div class="switch-container">
@@ -506,21 +508,38 @@
         <div id="DietTab" class="tab-content">
             <div class="card">
                 <h3>🍽️ 食事解析 ＆ カロリー推定</h3>
-                <div class="form-group"><label>料理写真</label><input type="file" id="mealImageInput" accept="image/*" onchange="previewMealPhoto(event)"></div>
+                <div class="form-group">
+                    <label>料理写真をアップロード、または撮影</label>
+                    <input type="file" id="mealImageInput" accept="image/*" onchange="previewMealPhoto(event)">
+                </div>
+                <div id="mealPhotoContainer" style="text-align: center; margin-bottom: 15px;">
+                    <img id="mealPhotoPreview" style="max-width: 100%; max-height: 250px; border-radius: 8px; display: none; margin: 0 auto; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+                </div>
+                
                 <button class="btn-primary" id="btnAnalyzeMeal" onclick="analyzeMealCalories()" style="background-color:var(--accent-color); display:none;">AIで推定する</button>
-                <div id="mealLoading" style="display:none; text-align:center; margin:20px 0;"><span style="font-weight:bold; color:var(--accent-color);">🔍 画像をAI解析中...</span></div>
+                
+                <div id="mealLoading" style="display:none; text-align:center; margin:20px 0;">
+                    <span style="font-weight:bold; color:var(--accent-color);">🔍 画像をAI解析中...</span>
+                </div>
             </div>
+            
             <div class="card" id="mealResultCard" style="display:none;">
                 <h3>推定結果（微調整可能）</h3>
+                <p style="font-size: 0.8rem; color: #888; margin-bottom: 15px;">※現在のアプリ環境ではランダムなシミュレーション結果を返します。</p>
                 <div class="form-group"><label>メニュー名</label><input type="text" id="resultMealName"></div>
                 <div class="form-group"><label>エネルギー (kcal)</label><input type="number" id="resultCalories"></div>
-                <div style="display:flex; gap:10px;">
-                    <div class="form-group" style="flex:1;"><label>P (g)</label><input type="number" id="resultProtein"></div>
-                    <div class="form-group" style="flex:1;"><label>F (g)</label><input type="number" id="resultFat"></div>
-                    <div class="form-group" style="flex:1;"><label>C (g)</label><input type="number" id="resultCarbs"></div>
+                
+                <!-- 修正：PFCを分かりやすい日本語にし、食物繊維を追加（2×2のグリッド） -->
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:15px;">
+                    <div class="form-group" style="margin-bottom:0;"><label>タンパク質 (g)</label><input type="number" id="resultProtein"></div>
+                    <div class="form-group" style="margin-bottom:0;"><label>脂質 (g)</label><input type="number" id="resultFat"></div>
+                    <div class="form-group" style="margin-bottom:0;"><label>炭水化物 (g)</label><input type="number" id="resultCarbs"></div>
+                    <div class="form-group" style="margin-bottom:0;"><label>食物繊維 (g)</label><input type="number" id="resultFiber"></div>
                 </div>
+                
                 <button class="btn-primary" onclick="saveEstimatedMeal()">記録に保存</button>
             </div>
+            
             <div class="card">
                 <h3>おすすめ献立・レシピ（日替わり提案）</h3>
                 <div id="recipeContent" class="recipe-box">プロフィールを保存すると、目標に合わせたレシピが生成されます。</div>
@@ -891,7 +910,6 @@
         document.getElementById('trackingStatus').innerText = '計測終了'; window.removeEventListener('devicemotion', handleMotion);
     }
 
-    // カメラ機能（エラーハンドリングとHTTPS案内を含む）
     let isCameraOn = false, mediaStream = null;
     async function toggleFormCamera() {
         const video = document.getElementById('webcamPreview');
@@ -925,7 +943,7 @@
         }
     }
 
-    // ==================== 4. AIコーチ（ジム/家対応・5段階指導） ====================
+    // ==================== 4. AIコーチ ====================
     function updateCoachInputFields() {
         const ex = document.getElementById('coachExercise').value;
         const weightInput = document.getElementById('coachPrevWeight');
@@ -1001,83 +1019,111 @@
     function resetTimer() { stopTimer(); elapsedTime = 0; document.getElementById('timerDisplay').innerText = timerMode === 'stopwatch' ? "00:00:00" : `00:${String(document.getElementById('cdMinutes').value).padStart(2,'0')}:${String(document.getElementById('cdSeconds').value).padStart(2,'0')}`; }
     function updateDisplay(ms) { const s = Math.floor(ms / 1000); document.getElementById('timerDisplay').innerText = String(Math.floor(s/3600)).padStart(2,'0') + ':' + String(Math.floor((s%3600)/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0'); }
 
-    // ==================== 6. 食事解析 ＆ レシピ拡充 ====================
+    // ==================== 6. スコア計算 ＆ 食事解析 ====================
+    
+    // スコア計算ロジック（UIに指標とランクを表示）
     function calculateScore() {
-        const score = Math.floor(((Number(document.getElementById('steps').value) || 0) / 100) + ((Number(document.getElementById('distance').value) || 0) * 10) + ((Number(document.getElementById('duration').value) || 0) * 2));
+        const steps = Number(document.getElementById('steps').value) || 0;
+        const dist = Number(document.getElementById('distance').value) || 0;
+        const dur = Number(document.getElementById('duration').value) || 0;
+        
+        // 指標に基づく計算
+        const score = Math.floor((steps / 100) + (dist * 10) + (dur * 2));
         document.getElementById('trainingScore').innerText = score;
-        const db = getDB(); db[currentUser].data.score = score; saveDB(db); alert('実績スコアを保存しました。');
+        
+        // スコアランクの判定
+        let rankText = "";
+        if(score === 0) rankText = "記録がありません。運動を始めましょう！";
+        else if(score <= 30) rankText = "🌱 運動不足レベル（まずは歩く習慣を！）";
+        else if(score <= 70) rankText = "🚶 軽い運動レベル（健康維持の良いペース！）";
+        else if(score <= 150) rankText = "🔥 アクティブレベル（脂肪燃焼効果大！）";
+        else if(score <= 250) rankText = "🏃 アスリートレベル（素晴らしい運動量です！）";
+        else rankText = "👑 スーパーアスリートレベル（休息も大切に！）";
+        
+        document.getElementById('scoreRankText').innerText = rankText;
+        
+        const db = getDB(); 
+        db[currentUser].data.score = score; 
+        saveDB(db); 
+        
+        alert(`スコア算出完了！\n合計: ${score}pt\n評価: ${rankText.split('（')[0]}`);
     }
 
-    // レシピ拡充・詳細化
     const recipeDB = {
         diet: [
-            { 
-                title: "【減量】鶏むね肉のしっとりサラダチキン", 
-                desc: "【材料】鶏むね肉250g、塩、酒<br>【作り方】肉にフォークで数カ所穴を開け、塩と酒を揉み込みます。耐熱容器に入れラップをし、レンジ(600W)で3分加熱。裏返してさらに2分加熱後、粗熱が取れるまで余熱で中まで火を通します。", 
-                effect: "【効果】低脂質・高タンパク質の王道メニュー。筋肉量を維持しながら、基礎代謝を落とさずに脂肪燃焼をサポートします。" 
-            },
-            { 
-                title: "【減量】タラとキノコのホイル焼き", 
-                desc: "【材料】生タラ1切れ、しめじ、えのき、ポン酢<br>【作り方】アルミホイルにタラとキノコ類を乗せてしっかりと包みます。フライパンに少量の水を張り、蓋をして中火で約10分蒸し焼きにします。ポン酢をかけて完成。", 
-                effect: "【効果】白身魚は極めて脂質が低く、ダイエット中のタンパク源として優秀です。キノコの食物繊維が血糖値の急上昇を抑え、脂肪の蓄積を防ぎます。" 
-            },
-            { 
-                title: "【減量】豆腐としらたきの満腹ピリ辛スープ", 
-                desc: "【材料】絹ごし豆腐150g、しらたき100g、キムチ、鶏ガラスープの素<br>【作り方】鍋にお湯を沸かし、あく抜きしたしらたきと崩した豆腐を入れます。鶏ガラスープの素とキムチを加え、ひと煮立ちさせたら完成。", 
-                effect: "【効果】しらたきでカロリーを大幅にカットしつつ満腹感を得られます。カプサイシンが交感神経を刺激し、体脂肪の燃焼を促進します。" 
-            },
-            { 
-                title: "【減量】鶏ささみとオクラの梅肉和え", 
-                desc: "【材料】鶏ささみ2本、オクラ5本、梅干し1個、白だし<br>【作り方】ささみを茹でて細かく裂き、オクラも茹でて小口切りにします。叩いた梅干しと白だしで全体をよく和えます。", 
-                effect: "【効果】梅干しのクエン酸が疲労回復を促し、オクラのネバネバ成分（ペクチン）が腸内環境を整え、ダイエット中の便秘を予防します。" 
-            }
+            { title: "【減量】鶏むね肉のしっとりサラダチキン", desc: "【材料】鶏むね肉250g、塩、酒<br>【作り方】肉にフォークで穴を開け塩と酒を揉み込む。レンジ600Wで3分加熱し、裏返して2分加熱。余熱で中まで火を通す。", effect: "【効果】低脂質・高タンパク質の王道メニュー。筋肉量を維持しながら脂肪燃焼をサポートします。" },
+            { title: "【減量】タラとキノコのホイル焼き", desc: "【材料】生タラ1切れ、しめじ、えのき、ポン酢<br>【作り方】ホイルにタラとキノコを包み、フライパンで蓋をして中火で10分蒸し焼きにする。", effect: "【効果】白身魚は極めて脂質が低く、キノコの食物繊維が血糖値の急上昇を抑えます。" }
         ],
         bulk: [
-            { 
-                title: "【増量】豚ロースのスタミナ生姜焼き", 
-                desc: "【材料】豚ロース肉150g、玉ねぎ1/2個、醤油、みりん、酒、すりおろし生姜<br>【作り方】豚肉と薄切りの玉ねぎを油を引いたフライパンで炒めます。火が通ったら、すべての調味料を混ぜ合わせたタレを回し入れ、全体に絡めます。", 
-                effect: "【効果】豚肉に豊富なビタミンB1が、一緒に摂取したご飯（糖質）を効率よくエネルギーに変換し、高強度のトレーニングを可能にします。" 
-            },
-            { 
-                title: "【増量】牛赤身肉のガーリックステーキ", 
-                desc: "【材料】牛ももステーキ肉200g、にんにくスライス、塩胡椒、牛脂<br>【作り方】フライパンに牛脂とにんにくを入れ、香りが立ったら常温に戻した牛肉を入れます。強火で両面に焼き色をつけ、塩胡椒でシンプルに味付けします。", 
-                effect: "【効果】牛肉には筋力アップに直結するクレアチンと、男性ホルモンを活性化させる亜鉛が豊富に含まれており、筋肥大を強力に後押しします。" 
-            },
-            { 
-                title: "【増量】マグロとアボカドの爆弾丼", 
-                desc: "【材料】マグロの赤身100g、アボカド半分、卵黄1個、ご飯大盛り、ごま油、醤油<br>【作り方】丼にご飯を盛り、角切りにしたマグロとアボカドを乗せます。中央に卵黄を落とし、ごま油と醤油を回しかけます。", 
-                effect: "【効果】良質なタンパク質（マグロ）と、バルクアップに必要な健康的な脂質（アボカド・卵黄）を同時に摂取できる最強の増量食です。" 
-            },
-            { 
-                title: "【増量】鶏もも肉とブロッコリーのチーズ焼き", 
-                desc: "【材料】鶏もも肉200g、ブロッコリー100g、とろけるチーズ30g<br>【作り方】鶏もも肉を一口大に切り、下茹でしたブロッコリーと一緒に耐熱皿に並べます。上からチーズをたっぷりかけ、トースターで焦げ目がつくまで焼きます。", 
-                effect: "【効果】ブロッコリーのビタミンCとテストステロン維持効果に加え、チーズのカロリーとカルシウムで、バルクアップ期の栄養を底上げします。" 
-            }
+            { title: "【増量】豚ロースのスタミナ生姜焼き", desc: "【材料】豚ロース150g、玉ねぎ半個、醤油、みりん、酒、生姜<br>【作り方】豚肉と玉ねぎを炒め、調味料を絡める。", effect: "【効果】豚肉のビタミンB1が糖質代謝を助け、タンパク質が筋肉合成を強力にサポートします。" },
+            { title: "【増量】マグロとアボカドの爆弾丼", desc: "【材料】マグロ赤身100g、アボカド半分、卵黄1個、ご飯、ごま油、醤油<br>【作り方】ご飯にマグロとアボカドを乗せ、中央に卵黄を落としてごま油と醤油をかける。", effect: "【効果】良質なタンパク質とバルクアップに必要な健康的な脂質を同時に摂取できます。" }
         ],
         keep: [
-            { 
-                title: "【健康維持】鮭と野菜のホイル焼き", 
-                desc: "【材料】生鮭1切れ、玉ねぎ、にんじん、しめじ、バター5g<br>【作り方】アルミホイルにスライスした野菜を敷き、その上に鮭とバターを乗せて包みます。フライパンで蓋をして中火〜弱火で15分蒸し焼きにします。", 
-                effect: "【効果】鮭に含まれるアスタキサンチンが活性酸素を除去し、オメガ3脂肪酸が血液をサラサラにして血管年齢を若く保ちます。" 
-            },
-            { 
-                title: "【健康維持】鶏もも肉と彩り野菜の黒酢炒め", 
-                desc: "【材料】鶏もも肉100g、パプリカ（赤・黄）、ナス、黒酢、醤油、砂糖<br>【作り方】野菜と鶏肉を乱切りにし、フライパンで炒めます。火が通ったら黒酢、醤油、砂糖で作った合わせ調味料を加え、とろみがつくまで絡めます。", 
-                effect: "【効果】黒酢のアミノ酸が血流を改善し、彩り野菜のビタミン類が免疫力を高めます。バランスの取れた定食のメインとして最適です。" 
-            },
-            { 
-                title: "【健康維持】サバのトマト煮込み", 
-                desc: "【材料】サバの水煮缶1個、カットトマト缶1/2、玉ねぎ1/2個、コンソメ<br>【作り方】鍋に薄切りにした玉ねぎ、トマト缶、サバ缶を汁ごと入れます。コンソメを加えて中火で10分ほど煮込み、水分を飛ばします。", 
-                effect: "【効果】サバ缶のDHA/EPAと、トマトのリコピンの相乗効果で、アンチエイジングと生活習慣病の予防に極めて高い効果を発揮します。" 
-            },
-            { 
-                title: "【健康維持】豚しゃぶとたっぷり野菜のサラダ", 
-                desc: "【材料】豚しゃぶしゃぶ用肉100g、レタス、きゅうり、トマト、ごまドレッシング<br>【作り方】豚肉を沸騰直前のお湯でサッと茹で、冷水に取ります。ちぎった野菜の上に豚肉を乗せ、ごまドレッシングをかけます。", 
-                effect: "【効果】野菜から食物繊維をしっかり摂りながら、豚肉でタンパク質を補給。消化に良く、胃腸に負担をかけずに栄養を吸収できます。" 
-            }
+            { title: "【健康維持】鮭と野菜のホイル焼き", desc: "【材料】生鮭1切れ、玉ねぎ、しめじ、バター5g<br>【作り方】ホイルに野菜と鮭、バターを乗せて包み、フライパンで15分蒸し焼きにする。", effect: "【効果】鮭のアスタキサンチンが活性酸素を除去し、オメガ3脂肪酸が血液をサラサラにします。" },
+            { title: "【健康維持】豚しゃぶとたっぷり野菜のサラダ", desc: "【材料】豚肉100g、レタス、きゅうり、ごまドレッシング<br>【作り方】豚肉をサッと茹でて冷まし、野菜の上に乗せてドレッシングをかける。", effect: "【効果】食物繊維を摂りながらタンパク質を補給。胃腸に負担をかけずに栄養を吸収できます。" }
         ]
     };
 
+    // 写真を選んだ瞬間・写真を撮影した瞬間に発動する関数
+    function previewMealPhoto(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const r = new FileReader(); 
+            r.onload = (evt) => { 
+                const img = document.getElementById('mealPhotoPreview'); 
+                img.src = evt.target.result; 
+                img.style.display = 'block'; 
+                // ★「AIで推定する」ボタンを確実に表示★
+                document.getElementById('btnAnalyzeMeal').style.display = 'block'; 
+            }; 
+            r.readAsDataURL(file);
+        }
+    }
+
+    // ダミーの食事データ（メニューのレパートリーを大幅に拡充。食物繊維の項目も追加）
+    const dummyMeals = [
+        {name:"彩りサラダとグリルチキン", cal:380, p:34, f:10, c:15, fiber:6},
+        {name:"紅鮭の塩焼き玄米定食", cal:540, p:29, f:12, c:62, fiber:5},
+        {name:"牛赤身ステーキ", cal:610, p:45, f:22, c:10, fiber:1},
+        {name:"ハンバーグ定食（ライス付）", cal:850, p:30, f:45, c:80, fiber:4},
+        {name:"チーズハンバーグ定食", cal:950, p:35, f:55, c:80, fiber:4},
+        {name:"和風おろしハンバーグ定食", cal:750, p:30, f:35, c:80, fiber:5},
+        {name:"豚の生姜焼き定食", cal:780, p:28, f:35, c:85, fiber:3},
+        {name:"チキンカレーライス", cal:750, p:25, f:20, c:100, fiber:4},
+        {name:"ミックスサンドイッチ", cal:450, p:15, f:20, c:50, fiber:3},
+        {name:"鶏ささみとブロッコリー", cal:200, p:35, f:2, c:8, fiber:4},
+        {name:"海鮮丼", cal:600, p:35, f:15, c:80, fiber:1},
+        {name:"カルボナーラ", cal:800, p:20, f:45, c:75, fiber:2}
+    ];
+
+    // 「AIで推定する」ボタンを押したときの関数
+    function analyzeMealCalories() {
+        document.getElementById('btnAnalyzeMeal').style.display = 'none'; 
+        document.getElementById('mealLoading').style.display = 'block';
+        
+        // 1.5秒後に結果を出すシミュレーション
+        setTimeout(() => {
+            document.getElementById('mealLoading').style.display = 'none';
+            
+            // ランダムにメニューを選択して表示
+            const m = dummyMeals[Math.floor(Math.random() * dummyMeals.length)];
+            document.getElementById('resultMealName').value = m.name; 
+            document.getElementById('resultCalories').value = m.cal;
+            document.getElementById('resultProtein').value = m.p; 
+            document.getElementById('resultFat').value = m.f; 
+            document.getElementById('resultCarbs').value = m.c;
+            document.getElementById('resultFiber').value = m.fiber;
+            
+            document.getElementById('mealResultCard').style.display = 'block';
+        }, 1500);
+    }
+    
+    function saveEstimatedMeal() { 
+        alert("食事ログを保存しました。"); 
+        document.getElementById('mealResultCard').style.display = 'none'; 
+    }
+
+    // プロフィール・アドバイスの生成
     function saveProfileAndGenerateAdvice() {
         const height = Number(document.getElementById('height').value);
         const weight = Number(document.getElementById('weight').value);
@@ -1089,55 +1135,51 @@
         const idx = db[currentUser].data.weight_history.findIndex(d => d.date === today);
         if(idx >= 0) db[currentUser].data.weight_history[idx].weight = weight; else db[currentUser].data.weight_history.push({date:today, weight:weight});
         
-        // 1. BMI計算
         const bmi = weight / ((height/100) * (height/100));
         document.getElementById('currentBmiDisplay').innerText = bmi.toFixed(1);
 
-        // 2. 基礎代謝(BMR)計算 (Mifflin-St Jeor式)
         let bmr = (10 * weight) + (6.25 * height) - (5 * age) + (gender === 'male' ? 5 : -161);
-        let tdee = bmr * 1.5; // アクティブ度合い中程度の推定消費カロリー
+        let tdee = bmr * 1.5; 
 
-        // 3. 超具体的アドバイスの生成
         let targetKey = "keep";
         let advTitle = "", advTraining = "", advDiet = "", advFreq = "";
 
         if (bmi >= 25) {
             targetKey = "diet";
             advTitle = "🔥 脂肪燃焼＆シェイプアップ推奨";
-            advTraining = "筋力トレーニング（無酸素）を30分行った後に、20分以上の有酸素運動（ウォーキングや軽いジョギング）を行うと脂肪燃焼効果が最大化します。スクワットなどカロリー消費の高い「脚の種目」を週に1回必ず入れてください。";
-            advDiet = `目標摂取カロリーは1日約${Math.floor(tdee - 400)} kcalです。筋肉を減らさないためにタンパク質を1日約${Math.floor(weight * 1.5)}g確保し、揚げ物や洋菓子の脂質を徹底的に抑えましょう。`;
+            advTraining = "筋力トレーニング（無酸素）を30分行った後に、20分以上の有酸素運動を行うと脂肪燃焼効果が最大化します。";
+            advDiet = `目標摂取カロリーは1日約${Math.floor(tdee - 400)} kcalです。タンパク質を1日約${Math.floor(weight * 1.5)}g確保しましょう。`;
             advFreq = "週3〜4回（筋トレメイン2回 ＋ 有酸素メイン2回）";
         } else if (bmi < 18.5) {
             targetKey = "bulk";
             advTitle = "💪 筋肥大＆バルクアップ推奨";
-            advTraining = "筋肉を大きくするため、8〜10回で限界がくる「重い負荷」でのジムトレ、または自重なら動作を極端にゆっくり行うスロートレーニングを取り入れてください。有酸素運動は筋肉の合成を阻害するため週1回以下に留めましょう。";
-            advDiet = `目標摂取カロリーは1日約${Math.floor(tdee + 500)} kcalです。筋肉の材料となるタンパク質（約${Math.floor(weight * 2.0)}g）と、トレーニングのエネルギーとなる炭水化物（白米など）を3食＋間食でしっかり補給してください。`;
-            advFreq = "週3回（1回45分〜1時間以内で、短時間で限界まで追い込む）";
+            advTraining = "筋肉を大きくするため、重い負荷でのトレーニングを取り入れてください。有酸素運動は控えめに。";
+            advDiet = `目標摂取カロリーは1日約${Math.floor(tdee + 500)} kcalです。タンパク質を約${Math.floor(weight * 2.0)}g補給しましょう。`;
+            advFreq = "週3回（短時間で限界まで追い込む）";
         } else {
             targetKey = "keep";
             advTitle = "✨ 健康維持＆ボディメイク推奨";
-            advTraining = "現在の優れた適正体型を維持・引き締めるため、胸・背中・脚などの大きな筋肉をバランス良く鍛える全身法をローテーションしましょう。";
-            advDiet = `目標摂取カロリーは現状維持の1日約${Math.floor(tdee)} kcalです。タンパク質（約${Math.floor(weight * 1.2)}g）を確保しつつ、野菜からビタミン・ミネラルを摂取して代謝を良く保ちましょう。`;
-            advFreq = "週2〜3回（無理のないペースで、習慣化を第一に）";
+            advTraining = "現在の適正体型を維持するため、全身をバランス良く鍛えるメニューをローテーションしましょう。";
+            advDiet = `目標摂取カロリーは現状維持の1日約${Math.floor(tdee)} kcalです。タンパク質を約${Math.floor(weight * 1.2)}g確保しましょう。`;
+            advFreq = "週2〜3回（無理のないペースで）";
         }
 
         const advHTML = `
             <h4 style="color:var(--primary-color); margin-bottom:10px; font-size:1.1rem;">${advTitle}</h4>
             <ul style="padding-left:20px; font-size:0.9rem; line-height:1.7; color:#444;">
-                <li><strong>基礎代謝目安(BMR):</strong> 約${Math.floor(bmr)} kcal/日</li>
-                <li><strong>1日の消費カロリー目安(TDEE):</strong> 約${Math.floor(tdee)} kcal/日</li>
-                <li><strong>目標トレーニング頻度:</strong> ${advFreq}</li>
-                <li style="margin-top:8px;"><strong>🏋️‍♂️ 具体的なトレーニング:</strong><br>${advTraining}</li>
-                <li style="margin-top:8px;"><strong>🍽️ 具体的な食事・栄養:</strong><br>${advDiet}</li>
+                <li><strong>基礎代謝目安:</strong> 約${Math.floor(bmr)} kcal/日</li>
+                <li><strong>消費カロリー目安:</strong> 約${Math.floor(tdee)} kcal/日</li>
+                <li><strong>目標頻度:</strong> ${advFreq}</li>
+                <li style="margin-top:8px;"><strong>🏋️‍♂️ トレーニング:</strong><br>${advTraining}</li>
+                <li style="margin-top:8px;"><strong>🍽️ 食事・栄養:</strong><br>${advDiet}</li>
             </ul>
         `;
         
-        // 4. ランダムレシピの選択
         const recipesList = recipeDB[targetKey];
         const randomRecipe = recipesList[Math.floor(Math.random() * recipesList.length)];
         let rcpHTML = `
             <div class="recipe-item">
-                <div class='recipe-title'>🍽️ ${randomRecipe.title}</div>
+                <div class='recipe-title' style="color:var(--accent-color); font-weight:bold;">🍽️ ${randomRecipe.title}</div>
                 <p style='margin-top:5px; font-size:0.9rem; line-height:1.6;'>${randomRecipe.desc}</p>
                 <p style='margin-top:5px; font-size:0.9rem; line-height:1.6; color:#c62828;'>${randomRecipe.effect}</p>
             </div>
@@ -1162,6 +1204,7 @@
         const ctx = document.getElementById('weightChart').getContext('2d'); if(weightChartInstance) weightChartInstance.destroy();
         weightChartInstance = new Chart(ctx, { type: 'line', data: { labels: history.map(d=>d.date), datasets:[{ label:'体重(kg)', data:history.map(d=>d.weight), borderColor:'#4CAF50', backgroundColor:'rgba(76,175,80,0.1)', borderWidth:3, fill:true, tension:0.15 }] }, options:{ responsive:true, maintainAspectRatio:false } });
     }
+    
     function loadUserData() {
         const db = getDB(); const userData = db[currentUser].data;
         document.getElementById('weight').value = userData.weight || ''; 
@@ -1179,31 +1222,13 @@
         renderChart();
     }
 
-    const dummyMeals = [{name:"彩りサラダとグリルチキン",cal:380,p:34,f:10,c:15},{name:"紅鮭の塩焼き玄米定食",cal:540,p:29,f:12,c:62},{name:"牛赤身ステーキ",cal:610,p:45,f:22,c:10}];
-    function previewMealPhoto(e) {
-        const file = e.target.files[0];
-        if (file) {
-            const r = new FileReader(); r.onload = (evt) => { const img = document.getElementById('mealPhotoPreview'); img.src = evt.target.result; img.style.display = 'block'; document.getElementById('btnAnalyzeMeal').style.display='block'; }; r.readAsDataURL(file);
-        }
-    }
-    function analyzeMealCalories() {
-        document.getElementById('btnAnalyzeMeal').style.display = 'none'; document.getElementById('mealLoading').style.display = 'block';
-        setTimeout(() => {
-            document.getElementById('mealLoading').style.display = 'none';
-            const m = dummyMeals[Math.floor(Math.random() * dummyMeals.length)];
-            document.getElementById('resultMealName').value = m.name; document.getElementById('resultCalories').value = m.cal;
-            document.getElementById('resultProtein').value = m.p; document.getElementById('resultFat').value = m.f; document.getElementById('resultCarbs').value = m.c;
-            document.getElementById('mealResultCard').style.display = 'block';
-        }, 1500);
-    }
-    function saveEstimatedMeal() { alert("食事ログを保存しました。"); document.getElementById('mealResultCard').style.display = 'none'; }
-
     function generateFitnessPDF() {
         document.getElementById('pdfReportDate').innerText = `作成日: ${new Date().toLocaleDateString()}`; document.getElementById('pdfUser').innerText = currentUser;
         document.getElementById('pdfScore').innerText = document.getElementById('trainingScore').innerText;
         const target = document.getElementById('pdfReportTemplate');
         html2pdf().set({ margin: 15, filename: `fitness_report_${currentUser}.pdf`, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(target).save();
     }
+    
     window.onload = function() {
         const active = sessionStorage.getItem('fit_active_user');
         if(active) { currentUser = active; launchApp(); } else { document.getElementById('authContainer').style.display = 'block'; }
